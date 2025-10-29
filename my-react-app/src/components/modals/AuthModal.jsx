@@ -1,81 +1,126 @@
 import React, { useState, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
-import { API } from "../../api";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+
+const API_BASE = import.meta.env.VITE_BASE;
 
 export default function AuthModal() {
   const [isLogin, setIsLogin] = useState(true);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "business",
+  });
+
   const { login } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const navigateToDashboard = (role) => {
+    if (role === "business") navigate("/main-dashboard");
+    if (role === "project") navigate("/project-profile");
+    if (role === "admin") navigate("/admin-dashboard");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.email || !form.password || (!isLogin && !form.name)) {
+      alert("Please fill all required fields");
+      return;
+    }
+
     try {
-      if (isLogin) {
-        const res = await API.post("/auth/login", {
+     if (isLogin) {
+  const res = await axios.post(`${API_BASE}/auth/login`, {
+    email: form.email,
+    password: form.password,
+    dashboardType: form.role, // ✅ FIXED
+  });
+
+  login(res.data.token, res.data.user);
+  navigateToDashboard(res.data.user.role);
+}
+ else {
+        const payload = {
+          name: form.name,
           email: form.email,
           password: form.password,
-        });
-        login(res.data.token, res.data.user);
-      } else {
-        await API.post("/auth/register", form);
-        alert("Registered successfully! You can now login.");
+          role: form.role,
+          dashboardType: form.role,
+        };
+
+        await axios.post(`${API_BASE}/auth/register`, payload);
+
+        alert("✅ Registration successful! Please log in.");
         setIsLogin(true);
       }
+
     } catch (err) {
-      alert(err.response?.data?.message || "Error occurred");
+      console.error("Authentication Error:", err);
+      alert(err.response?.data?.message || "Authentication Failed ❌");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-blue-100 to-blue-200 p-4">
-      <div className="bg-white rounded-2xl shadow-lg flex flex-col md:flex-row overflow-hidden max-w-4xl w-full">
-        <div className={`w-full md:w-1/2 p-8 ${isLogin ? "order-last" : ""}`}>
-          <h2 className="text-2xl font-bold mb-4">
-            {isLogin ? "Login" : "Registration"}
-          </h2>
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            {!isLogin && (
-              <input
-                type="text"
-                placeholder="Name"
-                className="border w-full p-2 rounded"
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            )}
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
+
+        <h2 className="text-xl font-bold mb-6 text-center">
+          {isLogin ? "Login" : "Create an Account"}
+        </h2>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+
+          {!isLogin && (
             <input
-              type="email"
-              placeholder="Email"
-              className="border w-full p-2 rounded"
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              type="text"
+              placeholder="Full Name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="border p-2 rounded w-full"
             />
-            <input
-              type="password"
-              placeholder="Password"
-              className="border w-full p-2 rounded"
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
-            <button className="bg-blue-500 text-white w-full p-2 rounded hover:bg-blue-600">
-              {isLogin ? "Login" : "Register"}
-            </button>
-          </form>
-          <p className="text-sm mt-4 text-center">
-            {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-blue-600 font-semibold"
-            >
-              {isLogin ? "Register" : "Login"}
-            </button>
-          </p>
-        </div>
-        <div className="hidden md:flex w-1/2 bg-blue-500 text-white flex-col items-center justify-center p-10">
-          <h1 className="text-3xl font-bold mb-2">
-            {isLogin ? "Welcome Back!" : "Hello, Welcome!"}
-          </h1>
-          <p>
-            {isLogin ? "Glad to see you again" : "Let's get you registered"}
-          </p>
-        </div>
+          )}
+
+          <select
+            className="border p-2 rounded w-full"
+            value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value })}
+          >
+            <option value="business">Business Development</option>
+            <option value="project">Project Development</option>
+          </select>
+
+          <input
+            type="email"
+            placeholder="Email Address"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            className="border p-2 rounded w-full"
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            className="border p-2 rounded w-full"
+          />
+
+          <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold w-full py-2 rounded-md">
+            {isLogin ? "Login" : "Register"}
+          </button>
+        </form>
+
+        <p className="text-sm text-center mt-3">
+          {isLogin ? "Don't have an account?" : "Already registered?"}
+          <button
+            className="ml-2 text-blue-600 font-bold"
+            onClick={() => setIsLogin(!isLogin)}
+          >
+            {isLogin ? "Register" : "Login"}
+          </button>
+        </p>
       </div>
     </div>
   );

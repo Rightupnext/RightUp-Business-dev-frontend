@@ -1,6 +1,8 @@
 import React, { useContext, useState } from "react";
 import { X, Camera } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
+// 
+import axios from "axios";
 
 export default function ProfileModal({ onClose }) {
   const { user, setUser } = useContext(AuthContext);
@@ -15,6 +17,8 @@ export default function ProfileModal({ onClose }) {
   };
 
   const handleSave = async () => {
+
+    
     setLoading(true);
     try {
       // ✅ We don't call backend. Just update local user data.

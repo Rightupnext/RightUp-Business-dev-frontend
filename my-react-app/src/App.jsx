@@ -1,34 +1,59 @@
 import React, { useContext } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { AuthContext, AuthProvider } from "./context/AuthContext";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, AuthContext } from "./context/AuthContext";
 import AuthModal from "./components/modals/AuthModal";
+
+// ✅ Layouts
 import AdminDashboard from "./pages/AdminDashboard";
-import DashboardLayout from "./pages/DashboardLayout";
-// import BusinessClient from "./pages/BusinessClient";
-// import MembersPage from "./pages/MembersPage";
-// import TaskPage from "./pages/TaskPage";
-// import DashboardHome from "./pages/DashboardHome";
+import BusinessDashboardLayout from "./pages/BusinessDashboardLayout";
+import ProjectDashboardLayout from "./pages/ProjectDashboardLayout";
 
 function AppContent() {
   const { user } = useContext(AuthContext);
 
-  if (!user) return <AuthModal />;
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="*" element={<AuthModal />} />
+      </Routes>
+    );
+  }
 
   return (
-    <Router>
-      {user.role === "admin" ? (
-        <AdminDashboard />
-      ) : (
-        <DashboardLayout />
+    <Routes>
+      {/* ✅ Business User */}
+      {user.role === "business" && (
+        <>
+          <Route path="/*" element={<BusinessDashboardLayout />} />
+        </>
       )}
-    </Router>
+
+      {/* ✅ Project User */}
+      {user.role === "project" && (
+        <>
+          <Route path="/*" element={<ProjectDashboardLayout />} />
+        </>
+      )}
+
+      {/* ✅ Admin User */}
+      {user.role === "admin" && (
+        <>
+          <Route path="/*" element={<AdminDashboard />} />
+        </>
+      )}
+
+      {/* ✅ Safety Redirect */}
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
   );
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <Router>
+        <AppContent />
+      </Router>
     </AuthProvider>
   );
 }

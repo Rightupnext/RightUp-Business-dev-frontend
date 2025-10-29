@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { API } from "../api";
 import InputField from "../components/InputField";
 import Button from "../components/Button";
+import axios from "axios";
+const API_BASE = import.meta.env.VITE_BASE; 
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -9,7 +11,7 @@ export default function ForgotPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await API.post("/auth/forgot-password", { email });
+      await axios.post(`${API_BASE}/auth/forgot-password`, { email });
       alert("Password reset link sent to your email.");
     } catch (err) {
       alert(err.response?.data?.message || "Error occurred");

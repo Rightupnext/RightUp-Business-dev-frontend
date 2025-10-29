@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
+import { AuthContext } from "../../context/AuthContext";
+const API_BASE = import.meta.env.VITE_BASE; 
+
 
 export default function ClientModal({ onClose, refresh, client }) {
+  const { token } = useContext(AuthContext);
   const [form, setForm] = useState({
     clientName: "",
     clientRequirement: "",
@@ -11,27 +15,41 @@ export default function ClientModal({ onClose, refresh, client }) {
     clientEmail: "",
     clientLocation: "",
     clientProjectValue: "",
+    reminderDate: "",
+    reminderTime: "",
+    reminderMessage: ""
   });
 
-  // Fill form when editing
   useEffect(() => {
-    if (client) setForm(client);
+    if (client) {
+      setForm({
+        ...client,
+        reminderDate: client.reminders?.[0]?.date || "",
+        reminderTime: client.reminders?.[0]?.time || "",
+        reminderMessage: client.reminders?.[0]?.message || ""
+      });
+    }
   }, [client]);
 
   const handleSubmit = async () => {
     try {
-      if (client && client._id) {
-        // Update
-        await axios.put(`http://localhost:5000/api/clients/${client._id}`, form);
-      } else {
-        // Create
-        await axios.post("http://localhost:5000/api/clients", form);
+      if (!token) {
+        alert("Unauthorized: Please login again");
+        return;
       }
+
+      const headers = { Authorization: `Bearer ${token}` };
+      if (client && client._id) {
+        await axios.put(`${API_BASE}/clients/${client._id}`, form, { headers });
+      } else {
+        await axios.post(`${API_BASE}/clients`, form, { headers });
+      }
+
       refresh();
       onClose();
     } catch (err) {
       console.error("Failed to save client:", err);
-      alert("Failed to save client");
+      alert(err.response?.status === 403 ? "Unauthorized" : "Failed to save client");
     }
   };
 
@@ -41,7 +59,7 @@ export default function ClientModal({ onClose, refresh, client }) {
     { name: "clientContact", label: "Contact" },
     { name: "clientEmail", label: "Email Id" },
     { name: "clientLocation", label: "Location" },
-    { name: "clientProjectValue", label: "Project Value" },
+    { name: "clientProjectValue", label: "Project Value" }
   ];
 
   return (
@@ -78,6 +96,29 @@ export default function ClientModal({ onClose, refresh, client }) {
             value={form.clientEndDate || ""}
             onChange={(e) => setForm({ ...form, clientEndDate: e.target.value })}
             className="border p-2 rounded-md"
+          />
+
+          <h3 className="font-semibold mt-2">Reminders</h3>
+          <input
+            type="date"
+            value={form.reminderDate || ""}
+            onChange={(e) => setForm({ ...form, reminderDate: e.target.value })}
+            className="border p-2 rounded-md"
+            placeholder="Reminder Date"
+          />
+          <input
+            type="time"
+            value={form.reminderTime || ""}
+            onChange={(e) => setForm({ ...form, reminderTime: e.target.value })}
+            className="border p-2 rounded-md"
+            placeholder="Reminder Time"
+          />
+          <input
+            type="text"
+            value={form.reminderMessage || ""}
+            onChange={(e) => setForm({ ...form, reminderMessage: e.target.value })}
+            className="border p-2 rounded-md"
+            placeholder="Reminder Message"
           />
         </div>
 

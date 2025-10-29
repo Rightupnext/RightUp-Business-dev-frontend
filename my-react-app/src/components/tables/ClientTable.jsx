@@ -17,7 +17,7 @@ export default function ClientTable({ data, onEdit, onDelete }) {
             "Email Id",
             "Location",
             "Project Value",
-            "Actions",
+            "Actions"
           ].map((header) => (
             <th key={header} className="p-2 border">{header}</th>
           ))}
@@ -27,13 +27,11 @@ export default function ClientTable({ data, onEdit, onDelete }) {
       <tbody>
         {clients.length === 0 ? (
           <tr>
-            <td colSpan={9} className="text-center p-4">
-              No Data Available
-            </td>
+            <td colSpan={9} className="text-center p-4">No Data Available</td>
           </tr>
         ) : (
           clients.map((client) => (
-            <tr key={client._id || client.id}>
+            <tr key={client._id}>
               <td className="border p-2">{client.clientName}</td>
               <td className="border p-2">{client.clientRequirement}</td>
               <td className="border p-2">{client.clientStartDate}</td>
