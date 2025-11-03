@@ -57,7 +57,7 @@ export default function BusinessClient() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between mt-20 items-center mb-4">
         <h1 className="text-xl font-semibold">My Business Clients</h1>
         <button
           onClick={handleAdd}
@@ -68,7 +68,7 @@ export default function BusinessClient() {
       </div>
 
       {loading ? (
-        <p>Loading clients...</p>
+        <p></p>
       ) : (
         <ClientTable
           data={clients}

@@ -1,13 +1,17 @@
-// src/pages/proj-task-management.jsx
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import axios from "axios";
+import toast from "react-hot-toast";
 import { AuthContext } from "../../context/AuthContext";
 import Button from "../../components/Button";
-import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import {
+  TrashIcon,
+  PlusIcon,
+  PencilSquareIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 
-const API_BASE = import.meta.env.VITE_BASE; // e.g. http://localhost:5000/api
+const API_BASE = import.meta.env.VITE_BASE;
 
-// simple debounce helper
 function debounce(fn, wait) {
   let t;
   return (...args) => {
@@ -19,8 +23,8 @@ function debounce(fn, wait) {
 export default function ProjTaskManagement() {
   const { token } = useContext(AuthContext);
   const [groups, setGroups] = useState([]);
+  const [filterDate, setFilterDate] = useState("");
   const [loading, setLoading] = useState(false);
-  const [filterDate, setFilterDate] = useState(""); // YYYY-MM-DD, empty for all
   const headers = { headers: { Authorization: `Bearer ${token}` } };
 
   useEffect(() => {
@@ -31,25 +35,58 @@ export default function ProjTaskManagement() {
   const fetchGroups = async () => {
     setLoading(true);
     try {
-      const url = filterDate ? `${API_BASE}/tasks/groups?date=${filterDate}` : `${API_BASE}/tasks/groups`;
+      const url = filterDate
+        ? `${API_BASE}/tasks/groups?date=${filterDate}`
+        : `${API_BASE}/tasks/groups`;
       const res = await axios.get(url, headers);
       setGroups(res.data || []);
-    } catch (err) {
-      console.error("Fetch groups", err);
+    } catch {
+      toast.error("Failed to fetch groups");
     } finally {
       setLoading(false);
     }
   };
 
-  // create new group — uses today's date if filter empty, or filterDate if set (makes it easy)
   const createGroup = async () => {
     try {
       const payload = filterDate ? { date: filterDate } : {};
       const res = await axios.post(`${API_BASE}/tasks/groups`, payload, headers);
-      // add to top
-      setGroups(prev => [res.data, ...prev]);
+      setGroups((prev) => [res.data, ...prev]);
+      toast.success("New group created!");
+    } catch {
+      toast.error("Failed to create group");
+    }
+  };
+
+  const setTime = async (groupId, type) => {
+    try {
+      const res = await axios.put(
+        `${API_BASE}/tasks/groups/${groupId}/time`,
+        { type },
+        headers
+      );
+      setGroups((prev) =>
+        prev.map((g) => (g._id === groupId ? res.data : g))
+      );
+      toast.success(`${type} recorded`);
     } catch (err) {
-      console.error(err);
+      toast.error(err.response?.data?.message || "Already recorded or failed");
+    }
+  };
+
+  const addTask = async (groupId) => {
+    try {
+      const res = await axios.post(
+        `${API_BASE}/tasks/groups/${groupId}/tasks`,
+        {},
+        headers
+      );
+      setGroups((prev) =>
+        prev.map((g) => (g._id === groupId ? res.data : g))
+      );
+      toast.success("Task added");
+    } catch {
+      toast.error("Failed to add task");
     }
   };
 
@@ -57,86 +94,75 @@ export default function ProjTaskManagement() {
     if (!confirm("Delete this group?")) return;
     try {
       await axios.delete(`${API_BASE}/tasks/groups/${groupId}`, headers);
-      setGroups(prev => prev.filter(g => g._id !== groupId));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const setTime = async (groupId, type) => {
-    try {
-      const res = await axios.put(`${API_BASE}/tasks/groups/${groupId}/time`, { type }, headers);
-      setGroups(prev => prev.map(g => (g._id === groupId ? res.data : g)));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const addTask = async (groupId) => {
-    try {
-      const res = await axios.post(`${API_BASE}/tasks/groups/${groupId}/tasks`, { name: "" }, headers);
-      setGroups(prev => prev.map(g => (g._id === groupId ? res.data : g)));
-    } catch (err) {
-      console.error(err);
+      setGroups((prev) => prev.filter((g) => g._id !== groupId));
+      toast.success("Group deleted");
+    } catch {
+      toast.error("Failed to delete");
     }
   };
 
   const deleteTask = async (groupId, taskId) => {
     if (!confirm("Delete this task?")) return;
     try {
-      const res = await axios.delete(`${API_BASE}/tasks/groups/${groupId}/tasks/${taskId}`, headers);
-      setGroups(prev => prev.map(g => (g._id === groupId ? res.data : g)));
-    } catch (err) {
-      console.error(err);
+      const res = await axios.delete(
+        `${API_BASE}/tasks/groups/${groupId}/tasks/${taskId}`,
+        headers
+      );
+      setGroups((prev) =>
+        prev.map((g) => (g._id === groupId ? res.data : g))
+      );
+      toast.success("Task deleted");
+    } catch {
+      toast.error("Failed to delete task");
     }
   };
 
-  const deleteSelectedTasks = async (groupId, selectedIds) => {
-    if (!selectedIds.length) return;
-    if (!confirm(`Delete ${selectedIds.length} selected task(s)?`)) return;
-    try {
-      const res = await axios.put(`${API_BASE}/tasks/groups/${groupId}/tasks/delete`, { selectedTasks: selectedIds }, headers);
-      setGroups(prev => prev.map(g => (g._id === groupId ? res.data : g)));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // Auto-save: update single task via PATCH
   const saveTaskServer = async (groupId, taskId, patch) => {
     try {
-      const res = await axios.patch(`${API_BASE}/tasks/groups/${groupId}/tasks/${taskId}`, patch, headers);
-      // update local group with returned document
-      setGroups(prev => prev.map(g => (g._id === groupId ? res.data : g)));
-    } catch (err) {
-      console.error("Save task error", err);
+      const res = await axios.patch(
+        `${API_BASE}/tasks/groups/${groupId}/tasks/${taskId}`,
+        patch,
+        headers
+      );
+      setGroups((prev) =>
+        prev.map((g) => (g._id === groupId ? res.data : g))
+      );
+    } catch {
+      toast.error("Auto-save failed");
     }
   };
 
-  // debounced wrapper to avoid many rapid requests while typing
   const debouncedSave = useCallback(debounce(saveTaskServer, 600), []);
 
-  // local top-level update for quick UI feedback
-  const updateTaskLocal = (groupId, taskId, patch, shouldPersist = true) => {
-    setGroups(prev => prev.map(g => {
-      if (g._id !== groupId) return g;
-      return {
-        ...g,
-        tasks: g.tasks.map(t => (t._id === taskId ? { ...t, ...patch } : t)),
-      };
-    }));
-    if (shouldPersist) debouncedSave(groupId, taskId, patch);
+  const updateTaskLocal = (groupId, taskId, patch, persist = true) => {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g._id === groupId
+          ? {
+              ...g,
+              tasks: g.tasks.map((t) =>
+                t._id === taskId ? { ...t, ...patch } : t
+              ),
+            }
+          : g
+      )
+    );
+    if (persist) debouncedSave(groupId, taskId, patch);
   };
 
   return (
     <div className="p-4 lg:p-6 mt-20">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+        {/* ✅ Left side - Button */}
+        <div className="w-full sm:w-auto">
           <Button text="New Group" onClick={createGroup} />
         </div>
 
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600">Filter by date</label>
+        {/* ✅ Right side - Filter controls */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-sm text-gray-600 whitespace-nowrap">
+            Filter by date
+          </label>
           <input
             type="date"
             value={filterDate}
@@ -144,152 +170,293 @@ export default function ProjTaskManagement() {
             className="border rounded px-2 py-1"
           />
           <button
-            className="px-3 py-1 bg-gray-200 rounded"
-            onClick={() => { setFilterDate(""); fetchGroups(); }}
-            title="Clear filter"
+            className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition"
+            onClick={() => {
+              setFilterDate("");
+              fetchGroups();
+            }}
           >
             Clear
           </button>
         </div>
       </div>
 
-      {loading && <div className="text-sm text-gray-500">Loading...</div>}
+      {loading && <div></div>}
 
-      <div className="space-y-6">
-        {groups.length === 0 && !loading && (
-          <div className="text-gray-500">No groups yet. Click “New Group” to start.</div>
-        )}
+      {groups.map((group) => (
+        <div
+          key={group._id}
+          className="bg-white border rounded-lg p-4 shadow-sm mb-6"
+        >
+          <div className="flex flex-wrap justify-between gap-2">
+            <div className="text-sm">Date: {group.date}</div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "timeIn",
+                "MGBreakIn",
+                "MGBreakOut",
+                "LunchbreakIn",
+                "LunchbreakOut",
+                "EveBreakIn",
+                "EveBreakOut",
+                "timeOut",
+              ].map((type) => (
+                <button
+                  key={type}
+                  disabled={!!group[type]}
+                  onClick={() => setTime(group._id, type)}
+                  className={`px-3 py-1 text-sm rounded text-white ${
+                    group[type]
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  {type.replace(/([A-Z])/g, " $1")}
+                </button>
+              ))}
+              <button onClick={() => deleteGroup(group._id)} className="text-red-600">
+                <TrashIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
 
-        {groups.map(group => (
-          <div key={group._id} className="bg-white border rounded-lg p-4 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-              <div className="flex items-center gap-4">
-                <div className="text-sm text-gray-600 flex items-center gap-2">
-                  <div className="text-xs text-gray-500">Date :</div>
-                  <div className="text-sm font-medium">{group.date}</div>
+          <div className="flex flex-wrap gap-3 mt-3">
+            {[
+              "timeIn",
+              "MGBreakIn",
+              "MGBreakOut",
+              "LunchbreakIn",
+              "LunchbreakOut",
+              "EveBreakIn",
+              "EveBreakOut",
+              "timeOut",
+            ].map((key) => (
+              <div key={key} className="px-3 py-1 bg-gray-100 rounded text-sm">
+                <div className="text-xs text-gray-500">
+                  {key.replace(/([A-Z])/g, " $1")}
                 </div>
+                <div className="font-medium">{group[key] || "-"}</div>
               </div>
+            ))}
+          </div>
 
-              <div className="flex items-center gap-2">
-                <button onClick={() => setTime(group._id, "timeIn")} className="bg-blue-600 text-white px-3 py-1 rounded text-sm">Time In</button>
-                <button onClick={() => setTime(group._id, "timeOut")} className="bg-blue-600 text-white px-3 py-1 rounded text-sm">Time out</button>
-                <button onClick={() => setTime(group._id, "break")} className="bg-blue-600 text-white px-3 py-1 rounded text-sm">Break</button>
+          <div className="mt-4">
+            <button
+              onClick={() => addTask(group._id)}
+              className="bg-sky-600 text-white px-3 py-1 rounded text-sm flex items-center gap-2"
+            >
+              <PlusIcon className="w-4 h-4" /> Task
+            </button>
+          </div>
 
-                <button onClick={() => deleteGroup(group._id)} className="ml-2 text-red-600 hover:text-red-800" title="Delete group">
-                  <TrashIcon className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* times display */}
-            <div className="flex flex-wrap gap-3 mt-3">
-              <div className="px-3 py-1 bg-gray-100 rounded text-sm">
-                <div className="text-xs text-gray-500">Time In</div>
-                <div className="font-medium">{group.timeIn || "-"}</div>
-              </div>
-              <div className="px-3 py-1 bg-gray-100 rounded text-sm">
-                <div className="text-xs text-gray-500">Time Out</div>
-                <div className="font-medium">{group.timeOut || "-"}</div>
-              </div>
-              <div className="px-3 py-1 bg-gray-100 rounded text-sm">
-                <div className="text-xs text-gray-500">Break</div>
-                <div className="font-medium">{group.breakTime || "-"}</div>
-              </div>
-            </div>
-
-            {/* controls */}
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button onClick={() => addTask(group._id)} className="bg-sky-600 text-white px-3 py-1 rounded text-sm flex items-center gap-2">
-                  <PlusIcon className="w-4 h-4"/> Task
-                </button>
-              </div>
-            </div>
-
-            {/* table */}
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="p-2 w-12"></th>
-                    <th className="p-2 text-left">Task name</th>
-                    <th className="p-2 text-left">Timing</th>
-                    <th className="p-2 text-left">Issue</th>
-                    <th className="p-2 text-left">Status</th>
-                    <th className="p-2 text-left w-20">Action</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {group.tasks?.length ? group.tasks.map(task => (
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="p-2 text-left">Project</th>
+                  <th className="p-2 text-left">Task</th>
+                  <th className="p-2 text-left">Timing</th>
+                  <th className="p-2 text-left">Issue</th>
+                  <th className="p-2 text-left">Status</th>
+                  <th className="p-2 text-left">Img upload</th>
+                  <th className="p-2 text-left">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {group.tasks?.length ? (
+                  group.tasks.map((task) => (
                     <TaskRow
                       key={task._id}
                       groupId={group._id}
                       task={task}
-                      onLocalChange={(patch) => updateTaskLocal(group._id, task._id, patch, true)}
+                      token={token}
+                      onLocalChange={(patch, persist = true) =>
+                        updateTaskLocal(group._id, task._id, patch, persist)
+                      }
                       onDelete={() => deleteTask(group._id, task._id)}
-                      onDeleteSelected={(ids) => deleteSelectedTasks(group._id, ids)}
                     />
-                  )) : (
-                    <tr>
-                      <td colSpan={6} className="p-6 text-center text-gray-400">No tasks. Click <span className="font-medium">Task</span> to add a new row.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="text-center text-gray-400 p-4"
+                    >
+                      No tasks yet
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
 
-/* ---- TaskRow component ---- */
-function TaskRow({ groupId, task, onLocalChange, onDelete }) {
-  const [selected, setSelected] = useState(false);
+// ✅ Updated TaskRow with Image Upload + Modal
+function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
+  const [showModal, setShowModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const headers = { headers: { Authorization: `Bearer ${token}` } };
 
-  // local change handlers
+  const uploadImage = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await axios.post(
+        `${API_BASE}/tasks/groups/${groupId}/tasks/${task._id}/images`,
+        formData,
+        headers
+      );
+      toast.success("Image uploaded");
+      onLocalChange(
+        {
+          images: res.data.tasks.find((t) => t._id === task._id).images,
+        },
+        false
+      );
+    } catch {
+      toast.error("Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteImage = async (imageUrl) => {
+    if (!confirm("Delete this image?")) return;
+    try {
+      const res = await axios.delete(
+        `${API_BASE}/tasks/groups/${groupId}/tasks/${task._id}/images`,
+        { ...headers, data: { imageUrl } }
+      );
+      toast.success("Image deleted");
+      onLocalChange(
+        {
+          images: res.data.tasks.find((t) => t._id === task._id).images,
+        },
+        false
+      );
+    } catch {
+      toast.error("Delete failed");
+    }
+  };
+
   return (
-    <tr className="border-b">
-      <td className="p-2">
-        <input type="checkbox" checked={selected} onChange={() => setSelected(s => !s)} />
-      </td>
-      <td className="p-2">
-        <input
-          className="w-full border px-2 py-1 rounded"
-          value={task.name || ""}
-          onChange={(e) => onLocalChange({ name: e.target.value })}
-        />
-      </td>
-      <td className="p-2">
-        <input
-          className="w-full border px-2 py-1 rounded"
-          value={task.timing || ""}
-          onChange={(e) => onLocalChange({ timing: e.target.value })}
-        />
-      </td>
-      <td className="p-2">
-        <input
-          className="w-full border px-2 py-1 rounded"
-          value={task.issue || ""}
-          onChange={(e) => onLocalChange({ issue: e.target.value })}
-        />
-      </td>
-      <td className="p-2">
-        <input
-          className="w-full border px-2 py-1 rounded"
-          value={task.status || ""}
-          onChange={(e) => onLocalChange({ status: e.target.value })}
-        />
-      </td>
-      <td className="p-2">
-        <div className="flex gap-2 items-center">
-          <button onClick={onDelete} className="text-red-600">
+    <>
+      <tr className="border-b">
+        <td className="p-2">
+          <input
+            value={task.projname || ""}
+            onChange={(e) => onLocalChange({ projname: e.target.value })}
+            className="border rounded px-2 py-1 w-full"
+          />
+        </td>
+        <td className="p-2">
+          <input
+            value={task.name || ""}
+            onChange={(e) => onLocalChange({ name: e.target.value })}
+            className="border rounded px-2 py-1 w-full"
+          />
+        </td>
+        <td className="p-2">
+          <input
+            value={task.timing || ""}
+            readOnly
+            className="border rounded px-2 py-1 w-full bg-gray-100 cursor-not-allowed"
+          />
+        </td>
+        <td className="p-2">
+          <input
+            value={task.issue || ""}
+            onChange={(e) => onLocalChange({ issue: e.target.value })}
+            className="border rounded px-2 py-1 w-full"
+          />
+        </td>
+        <td className="p-2 flex items-center gap-2">
+          <input
+            value={task.status || ""}
+            onChange={(e) => onLocalChange({ status: e.target.value })}
+            className="border rounded px-2 py-1 w-full"
+          />
+          <label className="cursor-pointer">
+            <PencilSquareIcon className="w-5 h-5 text-blue-600" />
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={uploadImage}
+              disabled={uploading}
+            />
+          </label>
+        </td>
+        <td className="p-2 text-red-600">
+          <button onClick={onDelete}>
             <TrashIcon className="w-5 h-5" />
           </button>
-        </div>
-      </td>
-    </tr>
+        </td>
+      </tr>
+
+      {/* ✅ Thumbnails */}
+      {task.images?.length > 0 && (
+        <tr>
+          <td colSpan={6}>
+            <div className="flex gap-2 flex-wrap mt-2">
+              {task.images.map((img, idx) => (
+                <img
+                  key={idx}
+                  src={img}
+                  onClick={() => setShowModal(img)}
+                  className="w-12 h-12 rounded cursor-pointer hover:opacity-75 border"
+                />
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+
+     {/* ✅ Modal Preview */}
+{showModal && (
+  <div
+    className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+    onClick={() => setShowModal(false)} // Close when clicking outside
+  >
+    <div
+      className="relative bg-white p-4 rounded-lg shadow-lg max-w-lg w-full"
+      onClick={(e) => e.stopPropagation()} // Prevent close when clicking inside
+    >
+      {/* ❌ Close Button */}
+      <button
+        onClick={() => setShowModal(false)}
+        className="absolute top-2 right-2 text-gray-600 hover:text-black"
+      >
+        <XMarkIcon className="w-6 h-6" />
+      </button>
+
+      {/* 🖼️ Image */}
+      <img
+        src={showModal}
+        alt="Preview"
+        className="w-full h-auto rounded hover:scale-105 transition-transform"
+      />
+
+      {/* 🗑️ Delete Button */}
+      <div className="flex justify-end mt-3">
+        <button
+          onClick={() => deleteImage(showModal)}
+          className="bg-red-600 text-white px-4 py-1 rounded"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+    </>
   );
 }

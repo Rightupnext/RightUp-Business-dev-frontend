@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import ProjTaskManagement from "./proj-management/proj-task-management";
 import ProjManagementProfile from "./proj-management/ProjManagement-profile";
+import ProjectHandle from "./proj-management/ProjectHandle";
 import { AuthContext } from "../context/AuthContext";
 import { useContext } from "react";
 
@@ -19,6 +20,7 @@ export default function ProjectDashboardLayout() {
           <Routes>
             <Route path="/project-tasks" element={<ProjTaskManagement />} />
             <Route path="/project-profile" element={<ProjManagementProfile />} />
+            <Route path="/project" element={<ProjectHandle />} />
           </Routes>
         </div>
       </div>

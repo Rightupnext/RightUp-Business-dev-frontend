@@ -3,11 +3,13 @@ import { Routes, Route } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import BusinessClient from "./BusinessClient";
 import CardDashboard from "./Card-Dashboard";
+import BusinessTaskView from "./Business-task";
+import MonthlyReport from "./MonthlyReport";
 import Members from "./Members";
-// import Tasks from "./Tasks";
 import Navbar from "../components/Navbar";
 import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
+import BusinessUserProjects from "./BusinessUserProjects";
 
 const API_BASE = import.meta.env.VITE_BASE;
 
@@ -32,7 +34,16 @@ export default function BusinessDashboardLayout() {
     fetchDashboard();
   }, [token]);
 
-  if (!dashboardData) return <div>Loading...</div>;
+  // ✅ Custom loading spinner
+  if (!dashboardData)
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-600 font-medium">Loading dashboard...</p>
+        </div>
+      </div>
+    );
 
   return (
     <div className="flex h-[100vh] flex-col">
@@ -41,10 +52,24 @@ export default function BusinessDashboardLayout() {
         <Sidebar />
         <div className="flex-1 p-4 overflow-auto">
           <Routes>
-            <Route path="/main-dashboard" element={<CardDashboard cards={dashboardData.cards} />} />
-            <Route path="/clients" element={<BusinessClient clients={dashboardData.clients} />} />
-            <Route path="/members" element={<Members members={dashboardData.members} />} />
-            {/* <Route path="/tasks" element={<Tasks />} /> */}
+            <Route
+              path="/main-dashboard"
+              element={<CardDashboard cards={dashboardData.cards} />}
+            />
+            <Route
+              path="/clients"
+              element={<BusinessClient clients={dashboardData.clients} />}
+            />
+            <Route
+              path="/members"
+              element={<Members members={dashboardData.members} />}
+            />
+            <Route path="/tasks" element={<BusinessTaskView />} />
+            <Route path="/monthly-report" element={<MonthlyReport />} />
+            <Route
+              path="/business-user-projects/:id"
+              element={<BusinessUserProjects />}
+            />
           </Routes>
         </div>
       </div>
