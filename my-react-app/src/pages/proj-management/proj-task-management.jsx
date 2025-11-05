@@ -9,7 +9,7 @@ import {
   PencilSquareIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-
+import { FaUpload } from "react-icons/fa6";
 const API_BASE = import.meta.env.VITE_BASE;
 
 function debounce(fn, wait) {
@@ -152,15 +152,15 @@ export default function ProjTaskManagement() {
 
   return (
     <div className="p-4 lg:p-6 mt-20">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+      <div className="flex flex-col sm:flex-row cursor-pointer sm:items-center sm:justify-between mb-6 gap-4">
         {/* ✅ Left side - Button */}
-        <div className="w-full sm:w-auto">
-          <Button text="New Group" onClick={createGroup} />
+        <div className="w-full sm:w-auto bg-sky-600 cursor-pointer">
+          <Button text="New Group " onClick={createGroup} />
         </div>
 
         {/* ✅ Right side - Filter controls */}
         <div className="flex items-center gap-2 flex-wrap">
-          <label className="text-sm text-gray-600 whitespace-nowrap">
+          <label className="text-sm text-gray-600 whitespace-nowrap cursor-pointer">
             Filter by date
           </label>
           <input
@@ -190,7 +190,7 @@ export default function ProjTaskManagement() {
         >
           <div className="flex flex-wrap justify-between gap-2">
             <div className="text-sm">Date: {group.date}</div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 cursor-pointer">
               {[
                 "timeIn",
                 "MGBreakIn",
@@ -205,10 +205,10 @@ export default function ProjTaskManagement() {
                   key={type}
                   disabled={!!group[type]}
                   onClick={() => setTime(group._id, type)}
-                  className={`px-3 py-1 text-sm rounded text-white ${
+                  className={`px-3 py-1 text-sm cursor-pointer rounded text-white ${
                     group[type]
                       ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700"
+                      : "bg-sky-600 hover:bg-blue-700"
                   }`}
                 >
                   {type.replace(/([A-Z])/g, " $1")}
@@ -220,7 +220,7 @@ export default function ProjTaskManagement() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3 mt-3">
+          <div className="flex flex-wrap gap-3 mt-3 cursor-pointer">
             {[
               "timeIn",
               "MGBreakIn",
@@ -243,15 +243,15 @@ export default function ProjTaskManagement() {
           <div className="mt-4">
             <button
               onClick={() => addTask(group._id)}
-              className="bg-sky-600 text-white px-3 py-1 rounded text-sm flex items-center gap-2"
+              className="bg-sky-600 text-white px-3 py-1 cursor-pointer rounded text-sm flex items-center gap-2"
             >
               <PlusIcon className="w-4 h-4" /> Task
             </button>
           </div>
 
-          <div className="mt-4 overflow-x-auto">
+          <div className="mt-4 overflow-x-auto cursor-pointer">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 cursor-pointer">
                 <tr>
                   <th className="p-2 text-left">Project</th>
                   <th className="p-2 text-left">Task</th>
@@ -383,8 +383,10 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
             onChange={(e) => onLocalChange({ status: e.target.value })}
             className="border rounded px-2 py-1 w-full"
           />
+          </td>
+          <td>
           <label className="cursor-pointer">
-            <PencilSquareIcon className="w-5 h-5 text-blue-600" />
+            <FaUpload  className="w-5 h-5 text-sky-600" />
             <input
               type="file"
               className="hidden"
@@ -434,7 +436,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
         onClick={() => setShowModal(false)}
         className="absolute top-2 right-2 text-gray-600 hover:text-black"
       >
-        <XMarkIcon className="w-6 h-6" />
+        <XMarkIcon className="w-6 h-6 cursor-pointer" />
       </button>
 
       {/* 🖼️ Image */}
