@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
+import addNotification from "react-push-notification";
 import { AuthContext } from "../../context/AuthContext";
+
 const API_BASE = import.meta.env.VITE_BASE;
 
 export default function ClientModal({ onClose, refresh, client }) {
@@ -13,7 +15,6 @@ export default function ClientModal({ onClose, refresh, client }) {
     clientContact: "",
     clientEmail: "",
     clientLocation: "",
-    clientProjectValue: "",
     clientStartDate: "",
     clientEndDate: "",
     clientDiscussionDate: "",
@@ -23,16 +24,16 @@ export default function ClientModal({ onClose, refresh, client }) {
     reminderMessage: "",
   });
 
+  // ✅ Load existing client
   useEffect(() => {
     if (client) {
       setForm({
         clientName: client.clientName || "",
-         clientName: client.clientRefrence || "",
+        clientRefrence: client.clientRefrence || "",
         clientRequirement: client.clientRequirement || "",
         clientContact: client.clientContact || "",
         clientEmail: client.clientEmail || "",
         clientLocation: client.clientLocation || "",
-        clientProjectValue: client.clientProjectValue || "",
         clientStartDate: client.clientStartDate || "",
         clientEndDate: client.clientEndDate || "",
         clientDiscussionDate: client.clientDiscussionDate || "",
@@ -48,38 +49,135 @@ export default function ClientModal({ onClose, refresh, client }) {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  // ✅ Load saved reminders on mount
+  useEffect(() => {
+    const storedReminders = JSON.parse(localStorage.getItem("reminders") || "[]");
+    storedReminders.forEach((rem) => {
+      const now = new Date();
+      const reminderTime = new Date(rem.timestamp);
+      const delay = reminderTime - now;
+
+      if (delay > 0) {
+        setTimeout(() => triggerNotification(rem), delay);
+      }
+    });
+  }, []);
+
+  // ✅ Helper to trigger notification
+  const triggerNotification = (data) => {
+    addNotification({
+      title: "🔔 Reminder Alert",
+      subtitle: data.clientName || "Client Reminder",
+      message: `${data.reminderMessage} — ${data.reminderDate} at ${data.reminderTime}`,
+      theme: "darkblue",
+      duration: 6000,
+      native: true,
+      vibrate: [200, 100, 200],
+      icon: "/icon.png",
+    });
+  };
+
+  // ✅ Schedule local OS notification
+  const scheduleNotification = () => {
+    if (!form.reminderDate || !form.reminderTime || !form.reminderMessage) return;
+
+    try {
+      const dateStr = form.reminderDate;
+      const timeStr = form.reminderTime.trim();
+      let reminderDateTime;
+
+      // Detect AM/PM or 24-hour format
+      if (timeStr.toLowerCase().includes("am") || timeStr.toLowerCase().includes("pm")) {
+        const [time, modifier] = timeStr.split(" ");
+        let [hours, minutes] = time.split(":").map(Number);
+        if (modifier.toLowerCase() === "pm" && hours !== 12) hours += 12;
+        if (modifier.toLowerCase() === "am" && hours === 12) hours = 0;
+        reminderDateTime = new Date(`${dateStr}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`);
+      } else {
+        reminderDateTime = new Date(`${dateStr}T${timeStr}:00`);
+      }
+
+      const now = new Date();
+      const delay = reminderDateTime - now;
+
+      if (delay > 0) {
+        // Store reminder for persistence
+        const reminderData = {
+          clientName: form.clientName,
+          reminderDate: form.reminderDate,
+          reminderTime: form.reminderTime,
+          reminderMessage: form.reminderMessage,
+          timestamp: reminderDateTime.toISOString(),
+        };
+
+        const existing = JSON.parse(localStorage.getItem("reminders") || "[]");
+        existing.push(reminderData);
+        localStorage.setItem("reminders", JSON.stringify(existing));
+
+        console.log(`✅ Reminder set for ${reminderDateTime.toLocaleString()}`);
+        setTimeout(() => triggerNotification(reminderData), delay);
+      } else {
+        
+        triggerNotification({
+          ...form,
+          reminderDate: form.reminderDate,
+          reminderTime: form.reminderTime,
+          reminderMessage: form.reminderMessage,
+        });
+      }
+    } catch (err) {
+      console.error("❌ Failed to schedule notification:", err);
+    }
+  };
+
+  // ✅ Save/Update client + show instant popup
   const handleSubmit = async () => {
     try {
       if (!token) {
         alert("Unauthorized: Please login again");
         return;
       }
+
       const headers = { Authorization: `Bearer ${token}` };
+
       if (client && client._id) {
         await axios.put(`${API_BASE}/clients/${client._id}`, form, { headers });
+        addNotification({
+          title: "✅ Client Updated",
+          subtitle: form.clientName || "Client Details Updated",
+         
+          theme: "green",
+          duration: 4000,
+          native: true,
+        });
       } else {
         await axios.post(`${API_BASE}/clients`, form, { headers });
+        addNotification({
+          title: "🆕 New Client Added",
+          subtitle: form.clientName || "Client Created",
+        
+          theme: "darkblue",
+          duration: 4000,
+          native: true,
+        });
       }
+
+      scheduleNotification();
       refresh();
       onClose();
     } catch (err) {
-      console.error("Failed to save client:", err);
-      alert(
-        err.response?.status === 403 ? "Unauthorized" : "Failed to save client"
-      );
+      console.error("❌ Failed to save client:", err);
+      alert(err.response?.status === 403 ? "Unauthorized" : "Failed to save client");
     }
   };
 
   const textFields = [
     { name: "clientName", label: "Client Name" },
-     { name: "clientRefrence", label: "Reference" },
+    { name: "clientRefrence", label: "Reference" },
     { name: "clientRequirement", label: "Requirement" },
     { name: "clientContact", label: "Contact" },
     { name: "clientEmail", label: "Email Id" },
     { name: "clientLocation", label: "Location" },
-    { name: "clientProjectValue", label: "Project Value" },
-    { name: "clientDiscussionDate", label: "Last Discussion Date" },
-    { name: "clientFollowup", label: "Followup Date" },
   ];
 
   return (
@@ -107,17 +205,25 @@ export default function ClientModal({ onClose, refresh, client }) {
             </div>
           ))}
 
-          <label className="text-sm text-gray-600">Start Date</label>
-          <input
-            type="date"
-            value={form.clientStartDate || ""}
-            onChange={(e) => handleChange("clientStartDate", e.target.value)}
-            className="border p-2 rounded-md"
-          />
-
-         
+          {[
+            ["clientStartDate", "Start Date"],
+            ["clientEndDate", "End Date"],
+            ["clientDiscussionDate", "Last Discussion Date"],
+            ["clientFollowup", "Follow-up Date"],
+          ].map(([name, label]) => (
+            <div key={name}>
+              <label className="text-sm text-gray-600">{label}</label>
+              <input
+                type="date"
+                value={form[name] || ""}
+                onChange={(e) => handleChange(name, e.target.value)}
+                className="border p-2 rounded-md w-full"
+              />
+            </div>
+          ))}
 
           <h3 className="font-semibold mt-3 text-[#5B4FE8]">Reminder</h3>
+
           <label className="text-sm text-gray-600">Reminder Date</label>
           <input
             type="date"
@@ -126,10 +232,10 @@ export default function ClientModal({ onClose, refresh, client }) {
             className="border p-2 rounded-md"
           />
 
-          <label className="text-sm text-gray-600">Reminder Time (AM/PM)</label>
+          <label className="text-sm text-gray-600">Reminder Time (24-hr or AM/PM)</label>
           <input
             type="text"
-            placeholder="e.g. 02:30 PM"
+            placeholder="e.g. 14:30 or 02:30 PM"
             value={form.reminderTime || ""}
             onChange={(e) => handleChange("reminderTime", e.target.value)}
             className="border p-2 rounded-md"

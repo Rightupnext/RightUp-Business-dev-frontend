@@ -17,9 +17,10 @@ export default function AuthModal() {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  // ✅ Navigate user to their correct dashboard path
   const navigateToDashboard = (role) => {
-    if (role === "business") navigate("/main-dashboard");
-    if (role === "project") navigate("/project-profile");
+    if (role === "business") navigate("/business/main-dashboard");
+    if (role === "project") navigate("/project/project-tasks"); // ✅ fixed path
     if (role === "admin") navigate("/admin-dashboard");
   };
 
@@ -31,17 +32,18 @@ export default function AuthModal() {
     }
 
     try {
-     if (isLogin) {
-  const res = await axios.post(`${API_BASE}/auth/login`, {
-    email: form.email,
-    password: form.password,
-    dashboardType: form.role, // ✅ FIXED
-  });
+      if (isLogin) {
+        // ✅ Login
+        const res = await axios.post(`${API_BASE}/auth/login`, {
+          email: form.email,
+          password: form.password,
+          dashboardType: form.role,
+        });
 
-  login(res.data.token, res.data.user);
-  navigateToDashboard(res.data.user.role);
-}
- else {
+        login(res.data.token, res.data.user);
+        navigateToDashboard(res.data.user.role); // ✅ redirect immediately
+      } else {
+        // ✅ Register
         const payload = {
           name: form.name,
           email: form.email,
@@ -51,11 +53,9 @@ export default function AuthModal() {
         };
 
         await axios.post(`${API_BASE}/auth/register`, payload);
-
         alert("✅ Registration successful! Please log in.");
         setIsLogin(true);
       }
-
     } catch (err) {
       console.error("Authentication Error:", err);
       alert(err.response?.data?.message || "Authentication Failed ❌");
@@ -65,13 +65,11 @@ export default function AuthModal() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
-
         <h2 className="text-xl font-bold mb-6 text-center">
           {isLogin ? "Login" : "Create an Account"}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-
           {!isLogin && (
             <input
               type="text"
@@ -89,6 +87,7 @@ export default function AuthModal() {
           >
             <option value="business">Business Development</option>
             <option value="project">Project Development</option>
+            <option value="admin">Admin</option>
           </select>
 
           <input
@@ -107,7 +106,10 @@ export default function AuthModal() {
             className="border p-2 rounded w-full"
           />
 
-          <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold w-full py-2 rounded-md">
+          <button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold w-full py-2 rounded-md"
+          >
             {isLogin ? "Login" : "Register"}
           </button>
         </form>

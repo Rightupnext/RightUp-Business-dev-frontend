@@ -8,18 +8,18 @@ export default function ClientTable({ data, onEdit, onDelete }) {
     <div
       className="w-full overflow-x-auto rounded-lg border border-gray-300 shadow-sm bg-white"
       style={{
-        scrollbarWidth: "none", // Firefox
+        scrollbarWidth: "display", // Firefox
         msOverflowStyle: "none", // IE and Edge
       }}
     >
       {/* Hide scrollbar for Webkit browsers */}
-      <style>
+      {/* <style>
         {`
           div::-webkit-scrollbar {
             display: none;
           }
         `}
-      </style>
+      </style> */}
 
       <table className="min-w-full border-collapse text-sm">
         <thead>
@@ -32,7 +32,7 @@ export default function ClientTable({ data, onEdit, onDelete }) {
               "Email Id",
               "Location",
              
-              "Start Date",
+             
               
               "Last Discussion Date",
               "Followup Date",
@@ -88,9 +88,9 @@ export default function ClientTable({ data, onEdit, onDelete }) {
                     {client.clientLocation || "-"}
                   </td>
                 
-                  <td className="p-3 whitespace-nowrap">
+                  {/* <td className="p-3 whitespace-nowrap">
                     {client.clientStartDate || "-"}
-                  </td>
+                  </td> */}
                 
                   <td className="p-3 whitespace-nowrap">
                     {client.clientDiscussionDate || "-"}

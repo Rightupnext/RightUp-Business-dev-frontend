@@ -51,7 +51,7 @@ export default function BusinessTaskView() {
     }
   };
 
-  // ✅ Format date to DD-MM-YYYY
+
   const formatDate = (iso) => {
     if (!iso) return "-";
     const d = new Date(iso);
@@ -59,7 +59,7 @@ export default function BusinessTaskView() {
   };
 
   return (
-    <div className="p-4 lg:p-6 mt-20 relative">
+    <div className="mt-20 relative">
       {/* ✅ Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         {/* Member Selection */}

@@ -28,8 +28,8 @@ export default function Members() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-white p-6 mt-15">
-      <h1 className="text-lg font-semibold mb-4">Project Members</h1>
+    <div className="min-h-screen bg-white mt-20">
+      <h1 className="text-xl font-semibold mb-4">Project Members</h1>
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

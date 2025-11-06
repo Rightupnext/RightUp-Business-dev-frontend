@@ -9,28 +9,27 @@ import toast, { Toaster } from "react-hot-toast";
 const API_BASE = import.meta.env.VITE_BASE;
 
 export default function ProjectHandle() {
-  const { token } = useContext(AuthContext);
+  const { token, user } = useContext(AuthContext); // ✅ use user info
   const [projects, setProjects] = useState([]);
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (user?._id) fetchProjects();
+  }, [user]);
 
-  // ✅ Fetch Projects
+  // ✅ Fetch only this user's projects
   const fetchProjects = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/projects`, {
+      const res = await axios.get(`${API_BASE}/projects/user/${user._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setProjects(res.data);
-      
     } catch (err) {
       console.error("Error fetching projects:", err);
-     
+      toast.error("Failed to load projects");
     }
   };
 
-  // ✅ Add new project section
+  // ✅ Add new blank project
   const handleAddProject = () => {
     setProjects([
       ...projects,
@@ -41,6 +40,7 @@ export default function ProjectHandle() {
         endDate: "",
         requirements: "",
         status: "Inprogress",
+        user: user._id, // ✅ attach user ID
         isNew: true,
       },
     ]);
@@ -71,11 +71,10 @@ export default function ProjectHandle() {
     }
   };
 
-  // ✅ Save or Update project
+  // ✅ Save or update project
   const handleSave = async (project, index) => {
     try {
       if (project._id) {
-        // Update existing
         const res = await axios.put(
           `${API_BASE}/projects/${project._id}`,
           project,
@@ -86,10 +85,13 @@ export default function ProjectHandle() {
         setProjects(updated);
         toast.success("Project updated successfully");
       } else {
-        // Create new
-        const res = await axios.post(`${API_BASE}/projects`, project, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // ✅ attach user ID before creating
+       const res = await axios.post(
+  `${API_BASE}/projects`,
+  project,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+
         const updated = [...projects];
         updated[index] = res.data;
         setProjects(updated);
@@ -103,7 +105,6 @@ export default function ProjectHandle() {
 
   return (
     <div className="p-6 mt-16">
-      {/* Toaster */}
       <Toaster position="top-right" reverseOrder={false} />
 
       <h2 className="text-2xl font-semibold mb-4">Project Management</h2>

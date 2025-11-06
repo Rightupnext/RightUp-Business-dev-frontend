@@ -34,7 +34,6 @@ export default function BusinessDashboardLayout() {
     fetchDashboard();
   }, [token]);
 
-  // ✅ Custom loading spinner
   if (!dashboardData)
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
@@ -51,25 +50,14 @@ export default function BusinessDashboardLayout() {
       <div className="flex flex-1">
         <Sidebar />
         <div className="flex-1 p-4 overflow-auto">
+          {/* ✅ Notice: No leading "/" in paths here */}
           <Routes>
-            <Route
-              path="/main-dashboard"
-              element={<CardDashboard cards={dashboardData.cards} />}
-            />
-            <Route
-              path="/clients"
-              element={<BusinessClient clients={dashboardData.clients} />}
-            />
-            <Route
-              path="/members"
-              element={<Members members={dashboardData.members} />}
-            />
-            <Route path="/tasks" element={<BusinessTaskView />} />
-            <Route path="/monthly-report" element={<MonthlyReport />} />
-            <Route
-              path="/business-user-projects/:id"
-              element={<BusinessUserProjects />}
-            />
+            <Route path="main-dashboard" element={<CardDashboard cards={dashboardData.cards} />} />
+            <Route path="clients" element={<BusinessClient clients={dashboardData.clients} />} />
+            <Route path="members" element={<Members members={dashboardData.members} />} />
+            <Route path="tasks" element={<BusinessTaskView />} />
+            <Route path="monthly-report" element={<MonthlyReport />} />
+            <Route path="business-user-projects/:id" element={<BusinessUserProjects />} />
           </Routes>
         </div>
       </div>

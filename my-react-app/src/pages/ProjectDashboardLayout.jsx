@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Routes, Route } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
@@ -6,7 +6,6 @@ import ProjTaskManagement from "./proj-management/proj-task-management";
 import ProjManagementProfile from "./proj-management/ProjManagement-profile";
 import ProjectHandle from "./proj-management/ProjectHandle";
 import { AuthContext } from "../context/AuthContext";
-import { useContext } from "react";
 
 export default function ProjectDashboardLayout() {
   const { user } = useContext(AuthContext);
@@ -17,10 +16,11 @@ export default function ProjectDashboardLayout() {
       <div className="flex flex-1">
         <Sidebar />
         <div className="flex-1 p-4 overflow-auto">
+          {/* ✅ Relative paths (no leading "/") */}
           <Routes>
-            <Route path="/project-tasks" element={<ProjTaskManagement />} />
-            <Route path="/project-profile" element={<ProjManagementProfile />} />
-            <Route path="/project" element={<ProjectHandle />} />
+            <Route path="project-tasks" element={<ProjTaskManagement />} />
+            <Route path="project-profile" element={<ProjManagementProfile />} />
+            <Route path="project" element={<ProjectHandle />} />
           </Routes>
         </div>
       </div>
