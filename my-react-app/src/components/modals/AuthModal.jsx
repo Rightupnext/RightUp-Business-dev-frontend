@@ -21,7 +21,7 @@ export default function AuthModal() {
   const navigateToDashboard = (role) => {
     if (role === "business") navigate("/business/main-dashboard");
     if (role === "project") navigate("/project/project-tasks"); // ✅ fixed path
-    if (role === "admin") navigate("/admin-dashboard");
+  
   };
 
   const handleSubmit = async (e) => {
@@ -87,7 +87,7 @@ export default function AuthModal() {
           >
             <option value="business">Business Development</option>
             <option value="project">Project Development</option>
-            <option value="admin">Admin</option>
+           
           </select>
 
           <input
