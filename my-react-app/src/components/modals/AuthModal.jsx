@@ -2,11 +2,13 @@ import React, { useState, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import toast, { Toaster } from "react-hot-toast";
 
 const API_BASE = import.meta.env.VITE_BASE;
 
 export default function AuthModal() {
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -20,17 +22,17 @@ export default function AuthModal() {
   // ✅ Navigate user to their correct dashboard path
   const navigateToDashboard = (role) => {
     if (role === "business") navigate("/business/main-dashboard");
-    if (role === "project") navigate("/project/project-tasks"); // ✅ fixed path
-  
+    if (role === "project") navigate("/project/project-tasks");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.email || !form.password || (!isLogin && !form.name)) {
-      alert("Please fill all required fields");
+      toast.error("⚠️ Please fill all required fields");
       return;
     }
 
+    setLoading(true);
     try {
       if (isLogin) {
         // ✅ Login
@@ -41,7 +43,8 @@ export default function AuthModal() {
         });
 
         login(res.data.token, res.data.user);
-        navigateToDashboard(res.data.user.role); // ✅ redirect immediately
+        toast.success("✅ Login successful!");
+        setTimeout(() => navigateToDashboard(res.data.user.role), 1000);
       } else {
         // ✅ Register
         const payload = {
@@ -53,19 +56,25 @@ export default function AuthModal() {
         };
 
         await axios.post(`${API_BASE}/auth/register`, payload);
-        alert("✅ Registration successful! Please log in.");
+        toast.success("🎉 Registration successful! Please log in.");
         setIsLogin(true);
       }
     } catch (err) {
       console.error("Authentication Error:", err);
-      alert(err.response?.data?.message || "Authentication Failed ❌");
+      const message =
+        err.response?.data?.message ||
+        (isLogin ? "Login failed ❌" : "Registration failed ❌");
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 relative">
+      <Toaster position="top-center" reverseOrder={false} />
       <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
-        <h2 className="text-xl font-bold mb-6 text-center">
+        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
           {isLogin ? "Login" : "Create an Account"}
         </h2>
 
@@ -76,18 +85,17 @@ export default function AuthModal() {
               placeholder="Full Name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="border p-2 rounded w-full"
+              className="border border-gray-300 p-2 rounded w-full focus:ring focus:ring-blue-200"
             />
           )}
 
           <select
-            className="border p-2 rounded w-full"
+            className="border border-gray-300 p-2 rounded w-full focus:ring focus:ring-blue-200"
             value={form.role}
             onChange={(e) => setForm({ ...form, role: e.target.value })}
           >
             <option value="business">Business Development</option>
             <option value="project">Project Development</option>
-           
           </select>
 
           <input
@@ -95,7 +103,7 @@ export default function AuthModal() {
             placeholder="Email Address"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="border p-2 rounded w-full"
+            className="border border-gray-300 p-2 rounded w-full focus:ring focus:ring-blue-200"
           />
 
           <input
@@ -103,21 +111,30 @@ export default function AuthModal() {
             placeholder="Password"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="border p-2 rounded w-full"
+            className="border border-gray-300 p-2 rounded w-full focus:ring focus:ring-blue-200"
           />
 
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold w-full py-2 rounded-md"
+            disabled={loading}
+            className={`${
+              loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+            } text-white font-semibold w-full py-2 rounded-md transition`}
           >
-            {isLogin ? "Login" : "Register"}
+            {loading
+              ? isLogin
+                ? "Logging in..."
+                : "Registering..."
+              : isLogin
+              ? "Login"
+              : "Register"}
           </button>
         </form>
 
-        <p className="text-sm text-center mt-3">
+        <p className="text-sm text-center mt-4 text-gray-600">
           {isLogin ? "Don't have an account?" : "Already registered?"}
           <button
-            className="ml-2 text-blue-600 font-bold"
+            className="ml-2 text-blue-600 font-semibold hover:underline"
             onClick={() => setIsLogin(!isLogin)}
           >
             {isLogin ? "Register" : "Login"}

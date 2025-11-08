@@ -143,7 +143,7 @@ export default function ProjectHandle() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <div>
-                <label className="block text-sm font-medium">Project Name</label>
+                <label className="block text-sm font-medium">Project Name *</label>
                 <InputField
                   type="text"
                   value={project.projectName}
@@ -154,7 +154,7 @@ export default function ProjectHandle() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Project Type</label>
+                <label className="block text-sm font-medium">Project Type *</label>
                 <InputField
                   type="text"
                   value={project.projectType}
@@ -165,7 +165,7 @@ export default function ProjectHandle() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Start Date</label>
+                <label className="block text-sm font-medium">Start Date *</label>
                 <InputField
                   type="date"
                   value={project.startDate}
@@ -176,7 +176,7 @@ export default function ProjectHandle() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium">End Date</label>
+                <label className="block text-sm font-medium">End Date *</label>
                 <InputField
                   type="date"
                   value={project.endDate}
@@ -188,7 +188,7 @@ export default function ProjectHandle() {
 
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium">
-                  Requirements
+                  Requirements *
                 </label>
                 <InputField
                   type="text"
@@ -200,7 +200,7 @@ export default function ProjectHandle() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Status</label>
+                <label className="block text-sm font-medium">Status *</label>
                 <select
                   value={project.status}
                   onChange={(e) =>
@@ -208,7 +208,7 @@ export default function ProjectHandle() {
                   }
                   className="border w-full p-2 rounded focus:ring-2 focus:ring-blue-400"
                 >
-                  <option value="Inprogress">Inprogress</option>
+                  <option value="Inprogress">Inprogress </option>
                   <option value="Completed">Completed</option>
                 </select>
               </div>

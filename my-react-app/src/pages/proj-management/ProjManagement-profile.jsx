@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { AuthContext } from "../../context/AuthContext";
 import { FaCamera } from "react-icons/fa";
+import toast, { Toaster } from "react-hot-toast";
 
 const API_BASE = import.meta.env.VITE_BASE;
 
@@ -30,11 +31,11 @@ export default function ProjManagementProfile() {
         });
         setForm(res.data);
         if (res.data.profileImage) {
-         setPreviewImage(`${API_BASE.replace("/api", "")}/${res.data.profileImage}`);
-
+          setPreviewImage(`${API_BASE.replace("/api", "")}/${res.data.profileImage}`);
         }
       } catch (err) {
         console.error("Fetch Profile Error:", err);
+        toast.error("❌ Failed to fetch profile details.");
       }
     };
     fetchProfile();
@@ -70,15 +71,16 @@ export default function ProjManagementProfile() {
         },
       });
 
-      alert("✅ Profile Updated Successfully!");
+      toast.success("✅ Profile Updated Successfully!");
     } catch (err) {
-      console.error(err);
-      alert("❌ Update Failed");
+      console.error("Update Error:", err);
+      toast.error("❌ Failed to update profile. Please try again.");
     }
   };
 
   return (
-    <div className="flex justify-center items-center py-12 px-4">
+    <div className="flex justify-center items-center py-12 px-4 bg-gray-100 min-h-screen">
+      <Toaster position="top-center" reverseOrder={false} />
       <div className="w-full max-w-lg bg-white p-8 rounded-lg shadow-md">
         
         {/* ✅ Profile Image Upload Area */}
