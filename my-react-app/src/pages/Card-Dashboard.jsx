@@ -38,11 +38,13 @@ const CardDashboard = () => {
         All Projects (All Users)
       </h2>
 
-      {loading ? (
-        <p className="text-center text-gray-500 py-8">Loading projects...</p>
-      ) : projects.length === 0 ? (
-        <p className="text-center text-gray-500 py-8">No projects found.</p>
-      ) : (
+    {loading ? (
+  <div className="flex justify-center items-center py-8">
+    <div className="w-10 h-10 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+  </div>
+) : projects.length === 0 ? (
+  <p className="text-center text-gray-500 py-8">No projects found.</p>
+) : (
         <div className="overflow-x-auto rounded-2xl border border-gray-300 shadow-md bg-white">
           <table className="min-w-full border-collapse text-sm">
             <thead className="bg-gray-100 text-gray-700">

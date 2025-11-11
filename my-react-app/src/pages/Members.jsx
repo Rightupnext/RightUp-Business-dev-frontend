@@ -28,7 +28,7 @@ export default function Members() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-white mt-20">
+    <div className="min-h-screen bg-white mt-20 p-6">
       <h1 className="text-xl font-semibold mb-4">Project Members</h1>
 
       {loading ? (
@@ -61,9 +61,9 @@ export default function Members() {
 
             <tbody>
               {members.length > 0 ? (
-                members.map((member, idx) => (
+                members.map((member) => (
                   <tr
-                    key={idx}
+                    key={member._id}
                     className="hover:bg-gray-50 transition-colors border-t border-gray-100"
                   >
                     <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
@@ -72,7 +72,9 @@ export default function Members() {
 
                     <td
                       onClick={() =>
-                        navigate(`/business-user-projects/${member._id}`)
+                      
+                        navigate(`/business/business-user-projects/${member._id}`)
+
                       }
                       className="px-4 py-3 text-blue-600 cursor-pointer hover:underline whitespace-nowrap"
                     >

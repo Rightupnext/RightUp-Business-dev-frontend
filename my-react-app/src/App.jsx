@@ -6,7 +6,6 @@ import { Toaster } from "react-hot-toast";
 import { Notifications } from "react-push-notification";
 
 // Layouts
-import AdminDashboard from "./pages/AdminDashboard";
 import BusinessDashboardLayout from "./pages/BusinessDashboardLayout";
 import ProjectDashboardLayout from "./pages/ProjectDashboardLayout";
 
@@ -14,13 +13,12 @@ function ProtectedRoute({ children, allowedRole }) {
   const { user } = useContext(AuthContext);
 
   // 🚫 No user → go to login
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/" replace />;
 
   // 🚫 Wrong role → redirect to their correct dashboard
   if (user.role !== allowedRole) {
     if (user.role === "business") return <Navigate to="/business" replace />;
     if (user.role === "project") return <Navigate to="/project" replace />;
-    if (user.role === "admin") return <Navigate to="/admin" replace />;
   }
 
   // ✅ Correct role → allow access
@@ -36,20 +34,14 @@ function AppContent() {
       <Toaster position="top-right" reverseOrder={false} />
 
       <Routes>
-        {/* 🟢 Auth / Login */}
+        {/* 🟢 Login / Root route */}
         <Route
-          path="/login"
+          path="/"
           element={
             user ? (
-              // ✅ Already logged in → go to correct dashboard
+              // ✅ Redirect logged-in users to their dashboard
               <Navigate
-                to={
-                  user.role === "business"
-                    ? "/business"
-                    : user.role === "project"
-                    ? "/project"
-                    : "/admin"
-                }
+                to={user.role === "business" ? "/business/main-dashboard" : "/project/project-tasks"}
                 replace
               />
             ) : (
@@ -75,32 +67,18 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/admin/*"
-          element={
-            <ProtectedRoute allowedRole="admin">
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
 
-        {/* 🏠 Root redirect */}
+        {/* 🧭 Catch-all fallback */}
         <Route
           path="*"
           element={
             user ? (
               <Navigate
-                to={
-                  user.role === "business"
-                    ? "/business"
-                    : user.role === "project"
-                    ? "/project"
-                    : "/admin"
-                }
+                to={user.role === "business" ? "/business" : "/project"}
                 replace
               />
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />

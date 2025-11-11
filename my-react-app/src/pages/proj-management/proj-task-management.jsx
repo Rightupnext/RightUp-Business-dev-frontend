@@ -3,14 +3,31 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { AuthContext } from "../../context/AuthContext";
 import Button from "../../components/Button";
-import {
-  TrashIcon,
-  PlusIcon,
-  PencilSquareIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { TrashIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { FaUpload } from "react-icons/fa6";
+
 const API_BASE = import.meta.env.VITE_BASE;
+
+// ✅ Format full date to IST
+const formatToIST = (dateString) => {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (isNaN(date)) return dateString;
+  return date.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
+};
+
+// ✅ Format time-only string to IST
+const formatToISTTime = (timeString) => {
+  if (!timeString) return "-";
+  const date = new Date(`1970-01-01T${timeString}Z`); // Treat as UTC
+  if (isNaN(date)) return timeString;
+  return date.toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
 
 function debounce(fn, wait) {
   let t;
@@ -50,7 +67,11 @@ export default function ProjTaskManagement() {
   const createGroup = async () => {
     try {
       const payload = filterDate ? { date: filterDate } : {};
-      const res = await axios.post(`${API_BASE}/tasks/groups`, payload, headers);
+      const res = await axios.post(
+        `${API_BASE}/tasks/groups`,
+        payload,
+        headers
+      );
       setGroups((prev) => [res.data, ...prev]);
       toast.success("New group created!");
     } catch {
@@ -65,9 +86,7 @@ export default function ProjTaskManagement() {
         { type },
         headers
       );
-      setGroups((prev) =>
-        prev.map((g) => (g._id === groupId ? res.data : g))
-      );
+      setGroups((prev) => prev.map((g) => (g._id === groupId ? res.data : g)));
       toast.success(`${type} recorded`);
     } catch (err) {
       toast.error(err.response?.data?.message || "Already recorded or failed");
@@ -81,9 +100,7 @@ export default function ProjTaskManagement() {
         {},
         headers
       );
-      setGroups((prev) =>
-        prev.map((g) => (g._id === groupId ? res.data : g))
-      );
+      setGroups((prev) => prev.map((g) => (g._id === groupId ? res.data : g)));
       toast.success("Task added");
     } catch {
       toast.error("Failed to add task");
@@ -108,9 +125,7 @@ export default function ProjTaskManagement() {
         `${API_BASE}/tasks/groups/${groupId}/tasks/${taskId}`,
         headers
       );
-      setGroups((prev) =>
-        prev.map((g) => (g._id === groupId ? res.data : g))
-      );
+      setGroups((prev) => prev.map((g) => (g._id === groupId ? res.data : g)));
       toast.success("Task deleted");
     } catch {
       toast.error("Failed to delete task");
@@ -124,9 +139,7 @@ export default function ProjTaskManagement() {
         patch,
         headers
       );
-      setGroups((prev) =>
-        prev.map((g) => (g._id === groupId ? res.data : g))
-      );
+      setGroups((prev) => prev.map((g) => (g._id === groupId ? res.data : g)));
     } catch {
       toast.error("Auto-save failed");
     }
@@ -153,12 +166,10 @@ export default function ProjTaskManagement() {
   return (
     <div className="p-4 lg:p-6 mt-20">
       <div className="flex flex-col sm:flex-row cursor-pointer sm:items-center sm:justify-between mb-6 gap-4">
-        {/* ✅ Left side - Button */}
         <div className="w-full sm:w-auto bg-sky-600 cursor-pointer">
-          <Button text="New Group " onClick={createGroup} />
+          <Button text="New Group" onClick={createGroup} />
         </div>
 
-        {/* ✅ Right side - Filter controls */}
         <div className="flex items-center gap-2 flex-wrap">
           <label className="text-sm text-gray-600 whitespace-nowrap cursor-pointer">
             Filter by date
@@ -181,7 +192,11 @@ export default function ProjTaskManagement() {
         </div>
       </div>
 
-      {loading && <div></div>}
+      {loading && (
+        <div className="flex justify-center py-8">
+          <div className="w-10 h-10 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
+      )}
 
       {groups.map((group) => (
         <div
@@ -189,7 +204,8 @@ export default function ProjTaskManagement() {
           className="bg-white border rounded-lg p-4 shadow-sm mb-6"
         >
           <div className="flex flex-wrap justify-between gap-2">
-            <div className="text-sm">Date: {group.date}</div>
+            <div className="text-sm">Date: {formatToIST(group.date)}</div>
+
             <div className="flex flex-wrap gap-2 cursor-pointer">
               {[
                 "timeIn",
@@ -214,7 +230,10 @@ export default function ProjTaskManagement() {
                   {type.replace(/([A-Z])/g, " $1")}
                 </button>
               ))}
-              <button onClick={() => deleteGroup(group._id)} className="text-red-600">
+              <button
+                onClick={() => deleteGroup(group._id)}
+                className="text-red-600"
+              >
                 <TrashIcon className="w-5 h-5" />
               </button>
             </div>
@@ -235,7 +254,7 @@ export default function ProjTaskManagement() {
                 <div className="text-xs text-gray-500">
                   {key.replace(/([A-Z])/g, " $1")}
                 </div>
-                <div className="font-medium">{group[key] || "-"}</div>
+                <div className="font-medium">{formatToISTTime(group[key])}</div>
               </div>
             ))}
           </div>
@@ -278,10 +297,7 @@ export default function ProjTaskManagement() {
                   ))
                 ) : (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="text-center text-gray-400 p-4"
-                    >
+                    <td colSpan={7} className="text-center text-gray-400 p-4">
                       No tasks yet
                     </td>
                   </tr>
@@ -295,7 +311,7 @@ export default function ProjTaskManagement() {
   );
 }
 
-// ✅ Updated TaskRow with Image Upload + Modal
+// ✅ TaskRow Component
 function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
   const [showModal, setShowModal] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -383,10 +399,10 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
             onChange={(e) => onLocalChange({ status: e.target.value })}
             className="border rounded px-2 py-1 w-full"
           />
-          </td>
-          <td>
+        </td>
+        <td>
           <label className="cursor-pointer">
-            <FaUpload  className="w-5 h-5 text-sky-600" />
+            <FaUpload className="w-5 h-5 text-sky-600" />
             <input
               type="file"
               className="hidden"
@@ -403,10 +419,9 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
         </td>
       </tr>
 
-      {/* ✅ Thumbnails */}
       {task.images?.length > 0 && (
         <tr>
-          <td colSpan={6}>
+          <td colSpan={7}>
             <div className="flex gap-2 flex-wrap mt-2">
               {task.images.map((img, idx) => (
                 <img
@@ -421,44 +436,39 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
         </tr>
       )}
 
-     {/* ✅ Modal Preview */}
-{showModal && (
-  <div
-    className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
-    onClick={() => setShowModal(false)} // Close when clicking outside
-  >
-    <div
-      className="relative bg-white p-4 rounded-lg shadow-lg max-w-lg w-full"
-      onClick={(e) => e.stopPropagation()} // Prevent close when clicking inside
-    >
-      {/* ❌ Close Button */}
-      <button
-        onClick={() => setShowModal(false)}
-        className="absolute top-2 right-2 text-gray-600 hover:text-black"
-      >
-        <XMarkIcon className="w-6 h-6 cursor-pointer" />
-      </button>
-
-      {/* 🖼️ Image */}
-      <img
-        src={showModal}
-        alt="Preview"
-        className="w-full h-auto rounded hover:scale-105 transition-transform"
-      />
-
-      {/* 🗑️ Delete Button */}
-      <div className="flex justify-end mt-3">
-        <button
-          onClick={() => deleteImage(showModal)}
-          className="bg-red-600 text-white px-4 py-1 rounded"
+      {showModal && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+          onClick={() => setShowModal(false)}
         >
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          <div
+            className="relative bg-white p-4 rounded-lg shadow-lg max-w-lg w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-2 right-2 text-gray-600 hover:text-black"
+            >
+              <XMarkIcon className="w-6 h-6 cursor-pointer" />
+            </button>
 
+            <img
+              src={showModal}
+              alt="Preview"
+              className="w-full cursor-pointer h-auto rounded hover:scale-105 transition-transform"
+            />
+
+            <div className="flex justify-end mt-3">
+              <button
+                onClick={() => deleteImage(showModal)}
+                className="bg-red-600 text-white px-4 py-1 rounded"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

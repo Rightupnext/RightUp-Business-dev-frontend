@@ -5,7 +5,7 @@ export default function Button({ text, onClick, type = "button" }) {
     <button
       type={type}
       onClick={onClick}
-      className="bg-blue-500 text-white w-full p-2 rounded hover:bg-blue-600 transition"
+      className="bg-blue-500 text-white w-full p-2 rounded hover:bg-blue-600 transition cursor-pointer"
     >
       {text}
     </button>

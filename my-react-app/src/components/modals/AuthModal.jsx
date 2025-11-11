@@ -44,7 +44,7 @@ export default function AuthModal() {
 
         login(res.data.token, res.data.user);
         toast.success("✅ Login successful!");
-        setTimeout(() => navigateToDashboard(res.data.user.role), 1000);
+        navigateToDashboard(res.data.user.role);
       } else {
         // ✅ Register
         const payload = {
