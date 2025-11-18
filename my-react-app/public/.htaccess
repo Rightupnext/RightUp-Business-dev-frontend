@@ -1,0 +1,18 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # React SPA Routing for /business
+  RewriteCond %{REQUEST_URI} ^/business
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^business/?(.*)$ /business/index.html [L]
+
+  # React SPA Routing for /project
+  RewriteCond %{REQUEST_URI} ^/project
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^project/?(.*)$ /project/index.html [L]
+</IfModule>

@@ -52,9 +52,9 @@ export default function BusinessDashboardLayout() {
         <div className="flex-1 p-4 overflow-auto">
           {/* ✅ Notice: No leading "/" in paths here */}
           <Routes>
-            <Route path="main-dashboard" element={<CardDashboard cards={dashboardData.cards} />} />
-            <Route path="clients" element={<BusinessClient clients={dashboardData.clients} />} />
-            <Route path="members" element={<Members members={dashboardData.members} />} />
+            <Route path="main-dashboard" element={<CardDashboard  />} />
+            <Route path="clients" element={<BusinessClient  />} />
+            <Route path="members" element={<Members />} />
             <Route path="tasks" element={<BusinessTaskView />} />
             <Route path="monthly-report" element={<MonthlyReport />} />
             <Route path="business-user-projects/:id" element={<BusinessUserProjects />} />

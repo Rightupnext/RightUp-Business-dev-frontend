@@ -51,6 +51,19 @@ export default function BusinessTaskView() {
     }
   };
 
+// ✅ Convert UTC or raw time string to IST with AM/PM
+const formatToISTTime = (timeString) => {
+  if (!timeString) return "-";
+  const date = new Date(`1970-01-01T${timeString}Z`); // interpret as UTC
+  if (isNaN(date)) return timeString;
+  return date.toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+   
+    hour12: true, // ✅ show AM/PM
+  });
+};
 
   const formatDate = (iso) => {
     if (!iso) return "-";
@@ -132,7 +145,9 @@ export default function BusinessTaskView() {
                       className="px-3 py-1 bg-blue-400 rounded text-sm text-white"
                     >
                       <div className="text-xs font-bold text-white">{label}</div>
-                      <div className="font-bold text-white">{value || "-"}</div>
+                     
+                      <div className="font-bold text-white">{formatToISTTime(value)}</div>
+
                     </div>
                   ))}
                 </div>
@@ -146,6 +161,7 @@ export default function BusinessTaskView() {
                       <th className="p-2 text-left">Project</th>
                       <th className="p-2 text-left">Task</th>
                       <th className="p-2 text-left">Timing</th>
+                        <th className="p-2 text-left">End Timing</th>
                       <th className="p-2 text-left">Issue</th>
                       <th className="p-2 text-left">Status</th>
                       <th className="p-2 text-left">Images</th>
@@ -157,7 +173,8 @@ export default function BusinessTaskView() {
                         <tr key={task._id} className="border-b hover:bg-gray-50">
                           <td className="p-2">{task.projname || "-"}</td>
                           <td className="p-2">{task.name || "-"}</td>
-                          <td className="p-2">{task.timing || "-"}</td>
+                          <td className="p-2">{formatToISTTime(task.timing)}</td>
+                          <td className="p-2">{formatToISTTime(task.endTiming)}</td>
                           <td className="p-2">{task.issue || "-"}</td>
                           <td className="p-2">{task.status || "-"}</td>
                           <td className="p-2">

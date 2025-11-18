@@ -4,6 +4,7 @@ import { AuthProvider, AuthContext } from "./context/AuthContext";
 import AuthModal from "./components/modals/AuthModal";
 import { Toaster } from "react-hot-toast";
 import { Notifications } from "react-push-notification";
+import { ReminderProvider } from "./context/ReminderContext";
 
 // Layouts
 import BusinessDashboardLayout from "./pages/BusinessDashboardLayout";
@@ -31,7 +32,7 @@ function AppContent() {
   return (
     <>
       <Notifications />
-      <Toaster position="top-right" reverseOrder={false} />
+     
 
       <Routes>
         {/* 🟢 Login / Root route */}
@@ -90,9 +91,11 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
+        <ReminderProvider>
       <Router>
         <AppContent />
       </Router>
+      </ReminderProvider>
     </AuthProvider>
   );
 }

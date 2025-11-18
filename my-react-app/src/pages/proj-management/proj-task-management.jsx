@@ -25,7 +25,7 @@ const formatToISTTime = (timeString) => {
     timeZone: "Asia/Kolkata",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: true
   });
 };
 
@@ -93,19 +93,37 @@ export default function ProjTaskManagement() {
     }
   };
 
-  const addTask = async (groupId) => {
-    try {
-      const res = await axios.post(
-        `${API_BASE}/tasks/groups/${groupId}/tasks`,
-        {},
-        headers
-      );
-      setGroups((prev) => prev.map((g) => (g._id === groupId ? res.data : g)));
-      toast.success("Task added");
-    } catch {
-      toast.error("Failed to add task");
-    }
-  };
+
+
+const addTask = async (groupId) => {
+  try {
+    // 🕒 Get current IST time
+    const now = new Date().toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true, // ✅ shows AM/PM
+    });
+
+    const payload = { timing: now };
+
+    const res = await axios.post(
+      `${API_BASE}/tasks/groups/${groupId}/tasks`,
+      payload,
+      headers
+    );
+
+    setGroups((prev) =>
+      prev.map((g) => (g._id === groupId ? res.data : g))
+    );
+    toast.success("Task added");
+  } catch {
+    toast.error("Failed to add task");
+  }
+};
+
+
 
   const deleteGroup = async (groupId) => {
     if (!confirm("Delete this group?")) return;
@@ -275,6 +293,7 @@ export default function ProjTaskManagement() {
                   <th className="p-2 text-left">Project</th>
                   <th className="p-2 text-left">Task</th>
                   <th className="p-2 text-left">Timing</th>
+                  <th className="p-2 text-left">End Timing</th>
                   <th className="p-2 text-left">Issue</th>
                   <th className="p-2 text-left">Status</th>
                   <th className="p-2 text-left">Img upload</th>
@@ -343,6 +362,31 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
     }
   };
 
+   // ✅ FIX → Moving saveEndTiming INSIDE TaskRow
+  const saveEndTiming = async () => {
+    try {
+      const now = new Date().toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+
+      const res = await axios.patch(
+        `${API_BASE}/tasks/groups/${groupId}/tasks/${task._id}`,
+        { endTiming: now },
+        headers
+      );
+
+      toast.success("End timing saved");
+
+      // Update UI locally
+      onLocalChange({ endTiming: now }, false);
+    } catch (err) {
+      toast.error("Failed to save end time");
+    }
+  };
   const deleteImage = async (imageUrl) => {
     if (!confirm("Delete this image?")) return;
     try {
@@ -364,54 +408,83 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
 
   return (
     <>
-      <tr className="border-b">
-        <td className="p-2">
-          <input
-            value={task.projname || ""}
-            onChange={(e) => onLocalChange({ projname: e.target.value })}
-            className="border rounded px-2 py-1 w-full"
-          />
-        </td>
-        <td className="p-2">
-          <input
-            value={task.name || ""}
-            onChange={(e) => onLocalChange({ name: e.target.value })}
-            className="border rounded px-2 py-1 w-full"
-          />
-        </td>
-        <td className="p-2">
-          <input
-            value={task.timing || ""}
-            readOnly
-            className="border rounded px-2 py-1 w-full bg-gray-100 cursor-not-allowed"
-          />
-        </td>
-        <td className="p-2">
-          <input
-            value={task.issue || ""}
-            onChange={(e) => onLocalChange({ issue: e.target.value })}
-            className="border rounded px-2 py-1 w-full"
-          />
-        </td>
-        <td className="p-2 flex items-center gap-2">
-          <input
-            value={task.status || ""}
-            onChange={(e) => onLocalChange({ status: e.target.value })}
-            className="border rounded px-2 py-1 w-full"
-          />
-        </td>
-        <td>
-          <label className="cursor-pointer">
-            <FaUpload className="w-5 h-5 text-sky-600" />
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={uploadImage}
-              disabled={uploading}
-            />
-          </label>
-        </td>
+ <tr className="border-b">
+  <td className="p-2">
+    <textarea
+      value={task.projname || ""}
+      onChange={(e) => onLocalChange({ projname: e.target.value })}
+      className="border rounded px-2 py-1 w-full h-20 resize-none"
+    />
+  </td>
+
+  <td className="p-2">
+    <textarea
+      value={task.name || ""}
+      onChange={(e) => onLocalChange({ name: e.target.value })}
+      className="border rounded px-2 py-1 w-full h-20 resize-none"
+    />
+  </td>
+
+  <td className="p-2">
+    <textarea
+      value={
+        task.timing
+          ? new Date(`1970-01-01T${task.timing}Z`).toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: true,
+            })
+          : ""
+      }
+      readOnly
+      className="border rounded px-2 py-1 w-full h-20 bg-gray-100 cursor-not-allowed resize-none"
+    />
+  </td>
+<td className="p-2">
+  <button
+    disabled={!!task.endTiming}
+    onClick={saveEndTiming}
+    className={`px-3 py-1 text-sm rounded text-white ${
+      task.endTiming
+        ? "bg-gray-400 cursor-not-allowed"
+        : "bg-sky-600 hover:bg-sky-700"
+    }`}
+  >
+    {task.endTiming ? task.endTiming : "End Timing"}
+  </button>
+</td>
+
+
+  <td className="p-2">
+    <textarea
+      value={task.issue || ""}
+      onChange={(e) => onLocalChange({ issue: e.target.value })}
+      className="border rounded px-2 py-1 w-full h-20 resize-none"
+    />
+  </td>
+
+  <td className="p-2 flex items-center gap-2">
+    <textarea
+      value={task.status || ""}
+      onChange={(e) => onLocalChange({ status: e.target.value })}
+      className="border rounded px-2 py-1 w-full h-20 resize-none"
+    />
+  </td>
+
+  <td>
+    <label className="cursor-pointer">
+      <FaUpload className="w-5 h-5 text-sky-600" />
+      <input
+        type="file"
+        className="hidden"
+        accept="image/*"
+        onChange={uploadImage}
+        disabled={uploading}
+      />
+    </label>
+  </td>
         <td className="p-2 text-red-600">
           <button onClick={onDelete}>
             <TrashIcon className="w-5 h-5" />

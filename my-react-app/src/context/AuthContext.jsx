@@ -4,42 +4,55 @@ import { API } from "../api";
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(JSON.parse(sessionStorage.getItem("user")) || null);
-  const [token, setToken] = useState(sessionStorage.getItem("token") || "");
+  const [user, setUser] = useState(
+    JSON.parse(localStorage.getItem("user")) || null
+  );
+  const [token, setToken] = useState(localStorage.getItem("token") || "");
 
-  // Validate token on app load
+
   useEffect(() => {
-    if (token) {
-      API.get("/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
+    if (!token) return;
+
+    const localUser = JSON.parse(localStorage.getItem("user")) || {};
+
+    API.get("/profile/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        const backendUser = res.data;
+
+        // ⭐ Merge backend data + locally stored profilePic
+        const finalUser = {
+          ...backendUser,
+          profilePic: localUser.profilePic || backendUser.profileImage || "",
+        };
+
+        setUser(finalUser);
+        localStorage.setItem("user", JSON.stringify(finalUser));
       })
-        .then((res) => {
-          setUser(res.data.user);
-          setToken(token);
-          sessionStorage.setItem("user", JSON.stringify(res.data.user));
-        })
-        .catch(() => {
-          sessionStorage.removeItem("user");
-          sessionStorage.removeItem("token");
-          setUser(null);
-          setToken("");
-        });
-    }
+      .catch(() => {
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        setUser(null);
+        setToken("");
+      });
   }, [token]);
 
+
   const login = (authToken, userData) => {
-    sessionStorage.setItem("token", authToken);
-    sessionStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem("token", authToken);
+    localStorage.setItem("user", JSON.stringify(userData));
     setToken(authToken);
     setUser(userData);
   };
 
   const logout = () => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setToken("");
     setUser(null);
   };
+
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, setUser }}>

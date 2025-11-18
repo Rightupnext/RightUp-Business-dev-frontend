@@ -1,10 +1,10 @@
-// frontend/pages/BusinessClient.jsx
 import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import ClientModal from "../components/modals/ClientModal";
 import ClientTable from "../components/tables/ClientTable";
 import { AuthContext } from "../context/AuthContext";
-const API_BASE = import.meta.env.VITE_BASE; 
+
+const API_BASE = import.meta.env.VITE_BASE;
 
 export default function BusinessClient() {
   const { token } = useContext(AuthContext);
@@ -13,24 +13,27 @@ export default function BusinessClient() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
 
-  const fetchClients = async () => {
-    try {
-      setLoading(true);
-        const res = await axios.get(`${API_BASE}/clients`,  {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setClients(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error("Failed to fetch clients:", err);
-      setClients([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchClients = async () => {
+  try {
+   
+    setLoading(true);
+    const res = await axios.get(`${API_BASE}/clients/getclientDetails`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setClients(res.data || []);
+  } catch (err) {
+    console.error("Failed to fetch clients:", err);
+    setClients([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [token]); // FIX: added dependency
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this client?")) return;
@@ -58,7 +61,8 @@ export default function BusinessClient() {
   return (
     <div>
       <div className="flex justify-between mt-20 items-center mb-4">
-        <h1 className="text-xl font-semibold">My Business Clients</h1>
+        <h1 className="text-xl font-semibold">All Business Clients</h1>
+
         <button
           onClick={handleAdd}
           className="bg-[#5B4FE8] text-white px-4 py-2 rounded-md"
@@ -70,11 +74,7 @@ export default function BusinessClient() {
       {loading ? (
         <p></p>
       ) : (
-        <ClientTable
-          data={clients}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+        <ClientTable data={clients} onEdit={handleEdit} onDelete={handleDelete} />
       )}
 
       {modalOpen && (

@@ -172,10 +172,10 @@ export default function ClientModal({ onClose, refresh, client }) {
   };
 
   const textFields = [
-    { name: "clientName", label: "Client Name" },
-    { name: "clientRefrence", label: "Reference" },
+    { name: "clientName", label: "Client Name *" },
+    { name: "clientRefrence", label: "Reference " },
     { name: "clientRequirement", label: "Requirement" },
-    { name: "clientContact", label: "Contact" },
+    { name: "clientContact", label: "Contact *" },
     { name: "clientEmail", label: "Email Id" },
     { name: "clientLocation", label: "Location" },
   ];
@@ -222,9 +222,9 @@ export default function ClientModal({ onClose, refresh, client }) {
             </div>
           ))}
 
-          <h3 className="font-semibold mt-3 text-[#5B4FE8]">Reminder</h3>
+          <h3 className="font-semibold mt-3 text-[#5B4FE8]">Reminder </h3>
 
-          <label className="text-sm text-gray-600">Reminder Date</label>
+          <label className="text-sm text-gray-600">Reminder Date *</label>
           <input
             type="date"
             value={form.reminderDate || ""}
@@ -232,7 +232,7 @@ export default function ClientModal({ onClose, refresh, client }) {
             className="border p-2 rounded-md"
           />
 
-          <label className="text-sm text-gray-600">Reminder Time (24-hr or AM/PM)</label>
+          <label className="text-sm text-gray-600">Reminder Time *(24-hr or AM/PM)</label>
           <input
             type="text"
             placeholder="e.g. 14:30 or 02:30 PM"
@@ -241,7 +241,7 @@ export default function ClientModal({ onClose, refresh, client }) {
             className="border p-2 rounded-md"
           />
 
-          <label className="text-sm text-gray-600">Reminder Message</label>
+          <label className="text-sm text-gray-600">Reminder Message *</label>
           <input
             type="text"
             value={form.reminderMessage || ""}
