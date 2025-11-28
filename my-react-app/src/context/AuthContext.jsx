@@ -1,30 +1,25 @@
 import React, { createContext, useEffect, useState } from "react";
-import { API } from "../api";
+import axios from "axios";
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("user")) || null
-  );
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || null);
   const [token, setToken] = useState(localStorage.getItem("token") || "");
 
-
+  // Fetch latest profile if token exists
   useEffect(() => {
     if (!token) return;
 
-    const localUser = JSON.parse(localStorage.getItem("user")) || {};
-
-    API.get("/profile/me", {
+    axios.get(`${import.meta.env.VITE_BASE}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
-        const backendUser = res.data;
+        const backendUser = res.data.user;
 
-        // ⭐ Merge backend data + locally stored profilePic
         const finalUser = {
           ...backendUser,
-          profilePic: localUser.profilePic || backendUser.profileImage || "",
+          profilePic: backendUser.profileImage || "",
         };
 
         setUser(finalUser);
@@ -38,12 +33,15 @@ export const AuthProvider = ({ children }) => {
       });
   }, [token]);
 
-
   const login = (authToken, userData) => {
+    const finalUser = {
+      ...userData,
+      profilePic: userData.profileImage || "",
+    };
     localStorage.setItem("token", authToken);
-    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem("user", JSON.stringify(finalUser));
     setToken(authToken);
-    setUser(userData);
+    setUser(finalUser);
   };
 
   const logout = () => {
@@ -52,7 +50,6 @@ export const AuthProvider = ({ children }) => {
     setToken("");
     setUser(null);
   };
-
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, setUser }}>

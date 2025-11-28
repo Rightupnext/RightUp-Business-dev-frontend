@@ -8,18 +8,14 @@ const API_BASE = import.meta.env.VITE_BASE; // ✅ Use env base URL
 export default function ProfileModal({ onClose }) {
   const { user, setUser, token } = useContext(AuthContext);
 
-  // =====================================================
-  // 🔥 Helper to build full image URL for local uploads
-  // =====================================================
+
   const fullImageUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http")) return path; // Cloudinary
     return `${API_BASE}/${path}`; // Local uploads
   };
 
-  // =====================================================
-  // 🔥 Load existing image (converted to full URL)
-  // =====================================================
+
   const [preview, setPreview] = useState(
     fullImageUrl(user?.profilePic || user?.profileImage)
   );
@@ -27,9 +23,6 @@ export default function ProfileModal({ onClose }) {
   const [imageFile, setImageFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // =====================================================
-  // 📸 Image Selection Preview
-  // =====================================================
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     setImageFile(file);
@@ -102,27 +95,7 @@ export default function ProfileModal({ onClose }) {
 
         <div className="flex flex-col items-center gap-4 mt-4">
 
-          {/* =======================
-              Profile Image
-          ======================== */}
-          <label htmlFor="profile-upload" className="cursor-pointer">
-            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-              {preview ? (
-                <img
-                  src={fullImageUrl(preview)}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <Camera className="text-gray-500" />
-              )}
-            </div>
-            <input
-              id="profile-upload"
-              type="file"
-              className="hidden"
-              onChange={handleImageChange}
-            />
-          </label>
+        
 
           {/* User Details */}
           <div className="w-full mt-2">

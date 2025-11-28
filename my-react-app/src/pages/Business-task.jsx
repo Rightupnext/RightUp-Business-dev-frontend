@@ -7,7 +7,10 @@ const API_BASE = import.meta.env.VITE_BASE;
 export default function BusinessTaskView() {
   const { token } = useContext(AuthContext);
   const [members, setMembers] = useState([]);
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedMember, setSelectedMember] = useState(
+    () => localStorage.getItem("selectedMember") || ""
+  );
+
   const [groups, setGroups] = useState([]);
   const [filterDate, setFilterDate] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,7 +22,10 @@ export default function BusinessTaskView() {
   useEffect(() => {
     const fetchMembers = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/profile/all-project-users`, headers);
+        const res = await axios.get(
+          `${API_BASE}/profile/all-project-users`,
+          headers
+        );
         setMembers(res.data || []);
         if (res.data.length) setSelectedMember(res.data[0]._id);
       } catch (err) {
@@ -51,25 +57,33 @@ export default function BusinessTaskView() {
     }
   };
 
-// ✅ Convert UTC or raw time string to IST with AM/PM
-const formatToISTTime = (timeString) => {
-  if (!timeString) return "-";
-  const date = new Date(`1970-01-01T${timeString}Z`); // interpret as UTC
-  if (isNaN(date)) return timeString;
-  return date.toLocaleTimeString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    hour: "2-digit",
-    minute: "2-digit",
-   
-    hour12: true, // ✅ show AM/PM
-  });
-};
+  // ✅ Convert UTC or raw time string to IST with AM/PM
+  const formatToISTTime = (timeString) => {
+    if (!timeString) return "-";
+    const date = new Date(`1970-01-01T${timeString}Z`); // interpret as UTC
+    if (isNaN(date)) return timeString;
+    return date.toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+
+      hour12: true, // ✅ show AM/PM
+    });
+  };
 
   const formatDate = (iso) => {
     if (!iso) return "-";
     const d = new Date(iso);
-    return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
+    return `${String(d.getDate()).padStart(2, "0")}-${String(
+      d.getMonth() + 1
+    ).padStart(2, "0")}-${d.getFullYear()}`;
   };
+
+  useEffect(() => {
+    if (members.length > 0 && !selectedMember) {
+      setSelectedMember(members[0]._id);
+    }
+  }, [members]);
 
   return (
     <div className="mt-20 relative">
@@ -77,10 +91,15 @@ const formatToISTTime = (timeString) => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         {/* Member Selection */}
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold text-gray-800">Task Management</h2>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Task Management
+          </h2>
           <select
-            value={selectedMember || ""}
-            onChange={(e) => setSelectedMember(e.target.value)}
+            value={selectedMember}
+            onChange={(e) => {
+              setSelectedMember(e.target.value);
+              localStorage.setItem("selectedMember", e.target.value);
+            }}
             className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
           >
             {members.map((m) => (
@@ -113,7 +132,9 @@ const formatToISTTime = (timeString) => {
       {loading ? (
         <div className="text-sm text-gray-500"></div>
       ) : groups.length === 0 ? (
-        <div className="text-gray-500">No task data available for this member.</div>
+        <div className="text-gray-500">
+          No task data available for this member.
+        </div>
       ) : (
         <div className="space-y-6">
           {groups.map((group) => (
@@ -123,10 +144,8 @@ const formatToISTTime = (timeString) => {
             >
               {/* Group Header */}
               <div className=" md:flex-row md:justify-between md:items-start gap-3 mb-3">
-              
-                  <span className="font-medium text-gray-800 ">Date:</span>
-                  <span>{formatDate(group.date)}</span>
-               
+                <span className="font-medium text-gray-800 ">Date:</span>
+                <span>{formatDate(group.date)}</span>
 
                 {/* Time Details */}
                 <div className="flex flex-wrap gap-3 mt-5">
@@ -144,10 +163,13 @@ const formatToISTTime = (timeString) => {
                       key={idx}
                       className="px-3 py-1 bg-blue-400 rounded text-sm text-white"
                     >
-                      <div className="text-xs font-bold text-white">{label}</div>
-                     
-                      <div className="font-bold text-white">{formatToISTTime(value)}</div>
+                      <div className="text-xs font-bold text-white">
+                        {label}
+                      </div>
 
+                      <div className="font-bold text-white">
+                        {formatToISTTime(value)}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -161,7 +183,7 @@ const formatToISTTime = (timeString) => {
                       <th className="p-2 text-left">Project</th>
                       <th className="p-2 text-left">Task</th>
                       <th className="p-2 text-left">Timing</th>
-                        <th className="p-2 text-left">End Timing</th>
+                      <th className="p-2 text-left">End Timing</th>
                       <th className="p-2 text-left">Issue</th>
                       <th className="p-2 text-left">Status</th>
                       <th className="p-2 text-left">Images</th>
@@ -170,11 +192,18 @@ const formatToISTTime = (timeString) => {
                   <tbody>
                     {group.tasks?.length ? (
                       group.tasks.map((task) => (
-                        <tr key={task._id} className="border-b hover:bg-gray-50">
+                        <tr
+                          key={task._id}
+                          className="border-b hover:bg-gray-50"
+                        >
                           <td className="p-2">{task.projname || "-"}</td>
                           <td className="p-2">{task.name || "-"}</td>
-                          <td className="p-2">{formatToISTTime(task.timing)}</td>
-                          <td className="p-2">{formatToISTTime(task.endTiming)}</td>
+                          <td className="p-2">
+                            {formatToISTTime(task.timing)}
+                          </td>
+                          <td className="p-2">
+                            {formatToISTTime(task.endTiming)}
+                          </td>
                           <td className="p-2">{task.issue || "-"}</td>
                           <td className="p-2">{task.status || "-"}</td>
                           <td className="p-2">
@@ -198,7 +227,10 @@ const formatToISTTime = (timeString) => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="p-4 text-center text-gray-400">
+                        <td
+                          colSpan={6}
+                          className="p-4 text-center text-gray-400"
+                        >
                           No tasks recorded
                         </td>
                       </tr>

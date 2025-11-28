@@ -84,7 +84,7 @@ export default function ProjManagementProfile() {
       <div className="w-full max-w-lg bg-white p-8 rounded-lg shadow-md">
         
         {/* ✅ Profile Image Upload Area */}
-        <div className="relative w-32 h-32 mx-auto mb-6">
+        {/* <div className="relative w-32 h-32 mx-auto mb-6">
           <img
             src={
               previewImage ||
@@ -92,10 +92,10 @@ export default function ProjManagementProfile() {
             }
             alt="Profile"
             className="w-full h-full rounded-full object-cover border shadow"
-          />
+          /> */}
 
           {/* ✅ Upload Camera Icon */}
-          <label className="absolute bottom-1 right-1 bg-white p-1 rounded-full cursor-pointer shadow-md">
+          {/* <label className="absolute bottom-1 right-1 bg-white p-1 rounded-full cursor-pointer shadow-md">
             <FaCamera className="text-gray-600" />
             <input
               type="file"
@@ -104,7 +104,7 @@ export default function ProjManagementProfile() {
               onChange={handleImageChange}
             />
           </label>
-        </div>
+        </div> */}
 
         <h2 className="text-xl font-semibold text-center text-gray-700 mb-6">
           Profile Details

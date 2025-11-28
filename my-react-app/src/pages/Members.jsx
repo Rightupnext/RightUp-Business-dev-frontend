@@ -47,7 +47,7 @@ export default function Members() {
                   "Email",
                   "Address",
                   "Blood Group",
-                  "Profile Image",
+                  // "Profile Image",
                 ].map((header) => (
                   <th
                     key={header}
@@ -97,7 +97,7 @@ export default function Members() {
                       {member.bloodGroup || "-"}
                     </td>
 
-                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                    {/* <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
                       {member.profileImage ? (
                         <img
                           src={`${API_BASE.replace("/api", "")}/${
@@ -109,7 +109,7 @@ export default function Members() {
                       ) : (
                         <span className="text-gray-400 italic">No Image</span>
                       )}
-                    </td>
+                    </td> */}
                   </tr>
                 ))
               ) : (
