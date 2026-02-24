@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { AuthContext } from "../context/AuthContext";
+import { FileText, Eye } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_BASE;
 
@@ -32,19 +33,23 @@ const CardDashboard = () => {
     fetchAllProjects();
   }, [token]);
 
+  const handleViewFile = (filePath) => {
+    window.open(`${API_BASE}${filePath}`, "_blank");
+  };
+
   return (
     <div className=" mt-20">
       <h2 className="text-xl font-semibold text-gray-800 mb-6">
         All Projects (All Users)
       </h2>
 
-    {loading ? (
-  <div className="flex justify-center items-center py-8">
-    <div className="w-10 h-10 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-  </div>
-) : projects.length === 0 ? (
-  <p className="text-center text-gray-500 py-8">No projects found.</p>
-) : (
+      {loading ? (
+        <div className="flex justify-center items-center py-8">
+          <div className="w-10 h-10 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
+      ) : projects.length === 0 ? (
+        <p className="text-center text-gray-500 py-8">No projects found.</p>
+      ) : (
         <div className="overflow-x-auto rounded-2xl border border-gray-300 shadow-md bg-white">
           <table className="min-w-full border-collapse text-sm">
             <thead className="bg-gray-100 text-gray-700">
@@ -57,6 +62,7 @@ const CardDashboard = () => {
                 <th className="border-b border-gray-300 px-4 py-3 text-left">Start Date</th>
                 <th className="border-b border-gray-300 px-4 py-3 text-left">End Date</th>
                 <th className="border-b border-gray-300 px-4 py-3 text-left">Requirements</th>
+                <th className="border-b border-gray-300 px-4 py-3 text-left">Files</th>
                 <th className="border-b border-gray-300 px-4 py-3 text-left">Status</th>
               </tr>
             </thead>
@@ -86,13 +92,33 @@ const CardDashboard = () => {
                   <td className="border-b border-gray-200 px-4 py-3 max-w-xs truncate">
                     {proj.requirements || "—"}
                   </td>
+                  <td className="border-b border-gray-200 px-4 py-3 min-w-[150px]">
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent flex-nowrap max-w-[200px]">
+                      {proj.requirementFiles && proj.requirementFiles.length > 0 ? (
+                        proj.requirementFiles.map((file, fIdx) => (
+                          <button
+                            key={fIdx}
+                            onClick={() => handleViewFile(file)}
+                            className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100 whitespace-nowrap hover:bg-blue-100 transition-colors shrink-0"
+                            title={file.split("/").pop()}
+                          >
+                            <FileText size={14} />
+                            <span className="text-[10px] max-w-[60px] truncate">
+                              {file.split("/").pop()}
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="border-b border-gray-200 px-4 py-3">
                     <span
-                      className={`px-3 py-1 text-xs rounded-full ${
-                        proj.status === "Completed"
+                      className={`px-3 py-1 text-xs rounded-full ${proj.status === "Completed"
                           ? "bg-green-500 text-white"
                           : "bg-yellow-500 text-white"
-                      }`}
+                        }`}
                     >
                       {proj.status}
                     </span>

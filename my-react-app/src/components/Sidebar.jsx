@@ -7,6 +7,8 @@ import {
   UserGroupIcon,
   ClipboardDocumentIcon,
   UserCircleIcon,
+  ShieldCheckIcon,
+  IdentificationIcon,
 } from "@heroicons/react/24/outline";
 
 // ✅ Menus without leading slashes
@@ -16,12 +18,28 @@ const BUSINESS_MENU = [
   { name: "Members", icon: UserGroupIcon, path: "members" },
   { name: "Tasks", icon: ClipboardDocumentIcon, path: "tasks" },
   { name: "Monthly Report", icon: UserCircleIcon, path: "monthly-report" },
+  {
+    name: "Holiday Calendar",
+    icon: IdentificationIcon,
+    path: "business-holidays",
+  },
 ];
 
 const PROJECT_MENU = [
-  { name: "Task Management", icon: ClipboardDocumentIcon, path: "project-tasks" },
+  {
+    name: "Task Management",
+    icon: ClipboardDocumentIcon,
+    path: "project-tasks",
+  },
   { name: "Project Management", icon: UserCircleIcon, path: "project" },
-  { name: "Profile", icon: UserCircleIcon, path: "project-profile" },
+  { name: "Profile", icon: IdentificationIcon, path: "project-profile" },
+  { name: "Permission", icon: ShieldCheckIcon, path: "project-permission" },
+  {
+    name: "Holiday-Calendar",
+    icon: IdentificationIcon,
+    path: "project-holidays",
+  },
+  { name: "Leave Report", icon: UserCircleIcon, path: "project-leave-report" },
 ];
 
 export default function Sidebar() {
@@ -51,7 +69,9 @@ export default function Sidebar() {
             }`}
           >
             <item.icon className="h-6 w-6" />
-            <span className="hidden lg:block text-sm font-medium">{item.name}</span>
+            <span className="hidden lg:block text-sm font-medium">
+              {item.name}
+            </span>
           </button>
         );
       })}

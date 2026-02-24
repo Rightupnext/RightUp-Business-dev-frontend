@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { calculateLiveWorkingHours } from "../utils/timeUtils";
 
 const API_BASE = import.meta.env.VITE_BASE;
 
-// Utility: Get all past days of a month up to today
+// Get all days of month till today
 const getDaysInMonth = (year, month) => {
   const days = [];
   const totalDays = new Date(year, month, 0).getDate();
@@ -30,47 +31,35 @@ const MonthlyReport = () => {
   const [reportData, setReportData] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [days, setDays] = useState([]);
+  const [permissions, setPermissions] = useState([]);
 
-  // Fetch all project users
+  // Fetch Members
   useEffect(() => {
     const fetchMembers = async () => {
       try {
         const token =
           sessionStorage.getItem("token") || localStorage.getItem("token");
 
-        if (!token) {
-          alert("Session expired. Please log in again.");
-          window.location.href = "/login";
-          return;
-        }
+        const res = await axios.get(
+          `${API_BASE}/profile/all-project-users`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-        const response = await fetch(`${API_BASE}/profile/all-project-users`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) throw new Error("Failed to fetch members");
-
-        const data = await response.json();
-        setMembers(data);
-      } catch (error) {
-        console.error("Error fetching project users:", error);
+        setMembers(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch members", err);
       }
     };
 
     fetchMembers();
   }, []);
 
-  // Fetch monthly report when member/date changes
+  // Fetch Attendance + Permissions
   useEffect(() => {
     if (!selectedMember) return;
 
     const token =
       sessionStorage.getItem("token") || localStorage.getItem("token");
-    if (!token) return;
 
     const year = selectedDate.getFullYear();
     const month = selectedDate.getMonth() + 1;
@@ -78,43 +67,79 @@ const MonthlyReport = () => {
     setDays(getDaysInMonth(year, month));
 
     axios
+      .get(`${API_BASE}/permissions/monthly/${selectedMember}/${month}/${year}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setPermissions(res.data || []))
+      .catch(console.error);
+
+    axios
       .get(`${API_BASE}/reports/monthly/${selectedMember}/${month}/${year}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setReportData(res.data || []))
-      .catch((err) => {
-        if (err.response?.status === 401) {
-          alert("Session expired. Please log in again.");
-          localStorage.removeItem("token");
-          window.location.href = "/login";
-        }
-      });
+      .catch(console.error);
+
   }, [selectedMember, selectedDate]);
 
-  // Determine attendance status
-  const checkStatus = (day) => {
-    const found = reportData.find((r) => r.date === day);
-    return found && found.timeIn ? "Present" : "Leave";
+  // Sunday check
+  const isSunday = (dateString) => {
+    const d = new Date(dateString);
+    return d.getDay() === 0;
   };
 
-const getDayName = (dateString) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-IN", { weekday: "long", timeZone: "Asia/Kolkata" });
-};
+  // 1st & 3rd Saturday check
+  const isFirstOrThirdSaturday = (dateString) => {
+    const d = new Date(dateString);
+    if (d.getDay() !== 6) return false;
+    const weekNumber = Math.ceil(d.getDate() / 7);
+    return weekNumber === 1 || weekNumber === 3;
+  };
+
+  const getAttendanceByDate = (day) => {
+    return reportData.find((r) => r.date === day);
+  };
+
+  const getPermissionByDate = (day) => {
+    return permissions.find((p) => p.date === day);
+  };
+
+  // FINAL STATUS LOGIC
+  const getStatusInfo = (day) => {
+    const attendance = getAttendanceByDate(day);
+    const weekend = isSunday(day) || isFirstOrThirdSaturday(day);
+
+    if (attendance && attendance.timeIn) {
+      return { label: "Present", className: "bg-green-500 text-white" };
+    }
+
+    if (weekend) {
+      return { label: "Leave", className: "bg-blue-400 text-white" };
+    }
+
+    return { label: "Leave", className: "bg-red-500 text-white" };
+  };
+
+  const getDayName = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-IN", {
+      weekday: "long",
+      timeZone: "Asia/Kolkata",
+    });
+  };
+
   return (
     <div className="max-w-3xl mt-20 mx-auto p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4 sm:mb-0">
-          Monthly Report
-        </h2>
-      </div>
+      <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+        Monthly Report
+      </h2>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <select
           value={selectedMember}
           onChange={(e) => setSelectedMember(e.target.value)}
-          className="border rounded-md p-2 bg-white text-black w-full sm:w-auto focus:ring-2 focus:ring-blue-400"
+          className="border rounded-md p-2 bg-white text-black"
         >
           <option value="">Select Member</option>
           {members.map((m) => (
@@ -129,11 +154,11 @@ const getDayName = (dateString) => {
           onChange={(date) => setSelectedDate(date)}
           dateFormat="MM/yyyy"
           showMonthYearPicker
-          className="border p-2 rounded-md bg-blue-500 text-white cursor-pointer focus:ring-2 focus:ring-blue-400"
+          className="border p-2 rounded-md bg-blue-500 text-white cursor-pointer"
         />
       </div>
 
-      {/* Monthly Table */}
+      {/* Table */}
       <div className="border rounded-lg overflow-hidden shadow-sm bg-white">
         {days.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
@@ -141,28 +166,37 @@ const getDayName = (dateString) => {
           </div>
         ) : (
           days.map((day, i) => {
-            const status = checkStatus(day);
-            const dateObj = new Date(day);
-            const formatted = dateObj.toLocaleDateString("en-GB");
-            const dayName = getDayName(day); // <-- Day name here
+            const statusInfo = getStatusInfo(day);
+            const permission = getPermissionByDate(day);
+            const formatted = new Date(day).toLocaleDateString("en-GB");
+            const dayName = getDayName(day);
 
             return (
-              <div
-                key={i}
-                className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b last:border-b-0 p-4 hover:bg-gray-50"
-              >
-                <div className="text-gray-700 font-medium">
-                  {formatted} — <span className="text-sm text-gray-500">{dayName}</span>
+              <div key={i} className="border-b p-4 space-y-2 hover:bg-gray-50 relative">
+                <div className="flex justify-between items-start">
+                  <div className="font-medium text-gray-700">
+                    {formatted} —{" "}
+                    <span className="text-sm text-gray-500">{dayName}</span>
+                  </div>
+                  {statusInfo.label === "Present" && (
+                    <div className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                      Working Hours: {calculateLiveWorkingHours(getAttendanceByDate(day))}
+                    </div>
+                  )}
                 </div>
 
-                {status === "Present" ? (
-                  <span className="bg-green-500 text-white px-4 py-1 rounded-md mt-2 sm:mt-0">
-                    Present
-                  </span>
-                ) : (
-                  <span className="bg-red-500 text-white px-4 py-1 rounded-md mt-2 sm:mt-0">
-                    Leave
-                  </span>
+                {/* STATUS */}
+                <span className={`${statusInfo.className} px-3 py-1 rounded`}>
+                  {statusInfo.label}
+                </span>
+
+                {/* PERMISSION */}
+                {permission && (
+                  <div className="bg-yellow-50 border rounded p-3 text-sm">
+                    <div>⏰ Permission In: {permission.permissionIn || "-"}</div>
+                    <div>⏰ Permission Out: {permission.permissionOut || "-"}</div>
+                    {permission.reason && <div>📝 {permission.reason}</div>}
+                  </div>
                 )}
               </div>
             );

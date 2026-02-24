@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
+import { calculateLiveWorkingHours } from "../utils/timeUtils";
 
 const API_BASE = import.meta.env.VITE_BASE;
 
@@ -15,6 +16,7 @@ export default function BusinessTaskView() {
   const [filterDate, setFilterDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [modalImage, setModalImage] = useState(null);
+  const [liveTime, setLiveTime] = useState(Date.now()); // For live timer updates
 
   const headers = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -85,6 +87,19 @@ export default function BusinessTaskView() {
     }
   }, [members]);
 
+  // Live timer - updates every second for active groups
+  useEffect(() => {
+    const timer = setInterval(() => {
+      // Only update if there's at least one active group (timeIn but no timeOut)
+      const hasActiveGroup = groups.some(g => g.timeIn && !g.timeOut);
+      if (hasActiveGroup) {
+        setLiveTime(Date.now());
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [groups]);
+
   return (
     <div className="mt-20 relative">
       {/* ✅ Header Section */}
@@ -146,6 +161,16 @@ export default function BusinessTaskView() {
               <div className=" md:flex-row md:justify-between md:items-start gap-3 mb-3">
                 <span className="font-medium text-gray-800 ">Date:</span>
                 <span>{formatDate(group.date)}</span>
+
+                {/* Working Hours Display */}
+                <span className={`ml-4 px-3 py-1 text-sm rounded-lg font-semibold ${group.timeIn && !group.timeOut
+                  ? 'bg-green-100 text-green-800 border border-green-300 animate-pulse'
+                  : 'bg-blue-100 text-blue-800 border border-blue-300'
+                  }`}>
+                  {group.timeIn
+                    ? `⏱️ ${calculateLiveWorkingHours(group)}`
+                    : '⏱️ 0h 0m'}
+                </span>
 
                 {/* Time Details */}
                 <div className="flex flex-wrap gap-3 mt-5">
@@ -209,15 +234,18 @@ export default function BusinessTaskView() {
                           <td className="p-2">
                             {task.images?.length > 0 ? (
                               <div className="flex gap-2 flex-wrap">
-                                {task.images.map((img, i) => (
-                                  <img
-                                    key={i}
-                                    src={img}
-                                    onClick={() => setModalImage(img)}
-                                    className="w-10 h-10 rounded border object-cover cursor-pointer hover:opacity-80"
-                                    alt="task"
-                                  />
-                                ))}
+                                {task.images.map((img, i) => {
+                                  const url = typeof img === "string" ? img : img.url;
+                                  return (
+                                    <img
+                                      key={i}
+                                      src={url}
+                                      onClick={() => setModalImage(img)}
+                                      className="w-10 h-10 rounded border object-cover cursor-pointer hover:opacity-80"
+                                      alt="task"
+                                    />
+                                  );
+                                })}
                               </div>
                             ) : (
                               "-"
@@ -257,7 +285,7 @@ export default function BusinessTaskView() {
               ✕
             </button>
             <img
-              src={modalImage}
+              src={typeof modalImage === "string" ? modalImage : modalImage.url}
               alt="Preview"
               className="w-full h-auto rounded-lg max-h-[80vh] object-contain"
             />

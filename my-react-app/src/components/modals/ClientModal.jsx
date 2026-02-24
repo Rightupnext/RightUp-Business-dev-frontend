@@ -7,6 +7,7 @@ const API_BASE = import.meta.env.VITE_BASE;
 
 export default function ClientModal({ onClose, refresh, client }) {
   const { token } = useContext(AuthContext);
+  const [uploads, setUploads] = useState([]);
 
   const [form, setForm] = useState({
     clientName: "",
@@ -42,6 +43,14 @@ export default function ClientModal({ onClose, refresh, client }) {
         reminderTime: client.reminders?.[0]?.time || "",
         reminderMessage: client.reminders?.[0]?.message || "",
       });
+      // Load existing attachments
+      if (client.attachments) {
+        setUploads(client.attachments.map(att => ({
+          ...att,
+          id: att._id || crypto.randomUUID(),
+          isExisting: true
+        })));
+      }
     }
   }, [client]);
 
@@ -62,6 +71,29 @@ export default function ClientModal({ onClose, refresh, client }) {
       }
     });
   }, []);
+
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files);
+
+    const newFiles = files.map((file) => ({
+      file,
+      id: crypto.randomUUID(),
+      type: file.type,
+      name: file.name,
+      size: file.size,
+      preview: file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : null,
+    }));
+
+    setUploads((prev) => [...prev, ...newFiles]);
+  };
+
+
+  const removeUpload = (id) => {
+    setUploads((prev) => prev.filter((f) => f.id !== id));
+  };
+
 
   // ✅ Helper to trigger notification
   const triggerNotification = (data) => {
@@ -117,7 +149,7 @@ export default function ClientModal({ onClose, refresh, client }) {
         console.log(`✅ Reminder set for ${reminderDateTime.toLocaleString()}`);
         setTimeout(() => triggerNotification(reminderData), delay);
       } else {
-        
+
         triggerNotification({
           ...form,
           reminderDate: form.reminderDate,
@@ -138,24 +170,44 @@ export default function ClientModal({ onClose, refresh, client }) {
         return;
       }
 
-      const headers = { Authorization: `Bearer ${token}` };
+      const formData = new FormData();
+
+      // Append form fields
+      Object.keys(form).forEach(key => {
+        formData.append(key, form[key]);
+      });
+
+      // Separate existing and new uploads
+      const existingAttachments = uploads.filter(f => f.isExisting);
+      const newFiles = uploads.filter(f => !f.isExisting);
+
+      formData.append("existingAttachments", JSON.stringify(existingAttachments));
+
+      newFiles.forEach(f => {
+        formData.append("files", f.file);
+      });
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
+        }
+      };
 
       if (client && client._id) {
-        await axios.put(`${API_BASE}/clients/${client._id}`, form, { headers });
+        await axios.put(`${API_BASE}/clients/${client._id}`, formData, config);
         addNotification({
           title: "✅ Client Updated",
           subtitle: form.clientName || "Client Details Updated",
-         
           theme: "green",
           duration: 4000,
           native: true,
         });
       } else {
-        await axios.post(`${API_BASE}/clients`, form, { headers });
+        await axios.post(`${API_BASE}/clients`, formData, config);
         addNotification({
           title: "🆕 New Client Added",
           subtitle: form.clientName || "Client Created",
-        
           theme: "darkblue",
           duration: 4000,
           native: true,
@@ -220,7 +272,62 @@ export default function ClientModal({ onClose, refresh, client }) {
                 className="border p-2 rounded-md w-full"
               />
             </div>
+
           ))}
+          {/* 📎 Attachments */}
+          <div className="mt-3">
+            <label className="text-sm text-gray-600 flex items-center gap-2">
+              Attachments
+              <label className="cursor-pointer text-[#5B4FE8]">
+                📤
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </label>
+
+            {uploads.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {uploads.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between border rounded-md p-2 bg-gray-50"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* File Icon */}
+                      <span className="text-2xl">
+                        {file.type?.includes("pdf") || file.mimetype?.includes("pdf") ? "📄" :
+                          file.type?.includes("word") || file.mimetype?.includes("word") ? "📝" :
+                            (file.type?.startsWith("image/") || file.mimetype?.startsWith("image/")) ? "🖼️" : "📎"}
+                      </span>
+
+                      <div>
+                        <p className="text-sm font-medium truncate max-w-[220px]">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {file.size ? `${(file.size / 1024).toFixed(1)} KB` : "Stored"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Delete */}
+                    <button
+                      onClick={() => removeUpload(file.id)}
+                      className="text-red-500 hover:text-red-700 text-sm"
+                    >
+                      ✖
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
 
           <h3 className="font-semibold mt-3 text-[#5B4FE8]">Reminder </h3>
 

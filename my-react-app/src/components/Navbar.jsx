@@ -1,10 +1,11 @@
-import React, { useState, useContext, useEffect, useRef } from "react";
 import { Bell, ChevronDown } from "lucide-react";
+import addNotification from "react-push-notification";
 import Logo from "../assets/rightup-logo.png";
 import { AuthContext } from "../context/AuthContext";
 import { ReminderContext } from "../context/ReminderContext";
 import ProfileModal from "./modals/ProfileModal";
 import ReminderPopup from "./modals/ReminderPopup";
+import { useContext, useEffect, useState, dropdownRef } from "react";
 
 const API_BASE = import.meta.env.VITE_BASE;
 
@@ -12,19 +13,86 @@ export default function Navbar() {
   const { user, logout } = useContext(AuthContext);
 
   // FIX: Import both reminders + setReminders
-  const { reminders, setReminders } = useContext(ReminderContext);
+  const { reminders, setReminders, todayGroup } = useContext(ReminderContext);
 
   const [open, setOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-
-  const dropdownRef = useRef(null);
+  const [breakNotifications, setBreakNotifications] = useState([]);
+  const [lastNotifiedBreak, setLastNotifiedBreak] = useState(null); // To avoid duplicate push notifications
 
   const fullImageUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http")) return path;
     return `${API_BASE}/${path}`;
   };
+
+  // ✅ Break Reminder Logic
+  useEffect(() => {
+    const checkBreaks = () => {
+      // Only show on the Project side
+      if (!todayGroup || !window.location.pathname.startsWith("/project")) {
+        if (breakNotifications.length > 0) setBreakNotifications([]);
+        return;
+      }
+
+      const now = new Date();
+      const newBreakNotifications = [];
+      let triggerPush = null;
+
+      const breaks = [
+        { label: "MG Break", in: todayGroup.MGBreakIn, out: todayGroup.MGBreakOut },
+        { label: "Eve Break", in: todayGroup.EveBreakIn, out: todayGroup.EveBreakOut },
+      ];
+
+      breaks.forEach((b) => {
+        if (b.in && !b.out) {
+          // Robust UTC-based time comparison for HH:mm:ss strings
+          const startTime = new Date(`1970-01-01T${b.in}Z`);
+          const nowISO = now.toISOString().split("T")[1].slice(0, 8);
+          const nowTime = new Date(`1970-01-01T${nowISO}Z`);
+
+          const elapsedMin = (nowTime - startTime) / (1000 * 60);
+
+          // If break started more than 20 mins ago but less than 25 mins ago
+          if (elapsedMin >= 20 && elapsedMin < 25) {
+            const remainingMin = Math.ceil(25 - elapsedMin);
+            const message = `${b.label}: only ${remainingMin} min${remainingMin > 1 ? "s" : ""} left`;
+            newBreakNotifications.push({
+              _id: `break-${b.label}-${remainingMin}`, // Unique ID for each minute update
+              message,
+              type: "break",
+            });
+
+            // Trigger Push Notification if not already done for this break session
+            if (lastNotifiedBreak !== b.label) {
+              triggerPush = { title: "Break Reminder", message };
+              setLastNotifiedBreak(b.label);
+            }
+          }
+        } else if (b.out && lastNotifiedBreak === b.label) {
+          // Reset notification flag when break ends
+          setLastNotifiedBreak(null);
+        }
+      });
+
+      if (triggerPush) {
+        addNotification({
+          title: triggerPush.title,
+          subtitle: "Break Timing",
+          message: triggerPush.message,
+          theme: "blue",
+          native: true, // Native browser notification
+        });
+      }
+
+      setBreakNotifications(newBreakNotifications);
+    };
+
+    checkBreaks();
+    const interval = setInterval(checkBreaks, 5000); // Check every 5 seconds for real-time updates
+    return () => clearInterval(interval);
+  }, [todayGroup, window.location.pathname, lastNotifiedBreak]);
 
   // Click outside close
   useEffect(() => {
@@ -37,6 +105,8 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  const allReminders = [...breakNotifications, ...reminders];
 
   return (
     <>
@@ -54,9 +124,9 @@ export default function Navbar() {
           >
             <Bell className="w-5 h-5 text-gray-700" />
 
-            {reminders.length > 0 && (
+            {allReminders.length > 0 && (
               <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
-                {reminders.length}
+                {allReminders.length}
               </span>
             )}
           </button>
@@ -80,11 +150,11 @@ export default function Navbar() {
           </button>
 
           <ReminderPopup
-  reminders={reminders}
-  show={showNotifications}
-  onClose={() => setShowNotifications(false)}
-  onDeleteSuccess={(id) => onDeleteSuccess(id)}
-/>
+            reminders={allReminders}
+            show={showNotifications}
+            onClose={() => setShowNotifications(false)}
+            onDeleteSuccess={(id) => onDeleteSuccess(id)}
+          />
 
 
           {/* Dropdown menu */}

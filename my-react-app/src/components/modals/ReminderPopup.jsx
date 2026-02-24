@@ -44,32 +44,44 @@ export default function ReminderPopup({ reminders = [], onDeleteSuccess, show, o
         reminders.map((rem) => (
           <div
             key={rem._id}
-            className="bg-white border p-3 rounded-lg mb-3 shadow-sm flex justify-between items-start"
+            className={`border p-3 rounded-lg mb-3 shadow-sm flex justify-between items-start ${rem.type === 'break' ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
+              }`}
           >
             <div>
-              <p className="font-semibold text-sm text-black">{rem.clientName}</p>
-              <p className="text-xs text-gray-600">{rem.clientContact}</p>
+              {rem.type === 'break' ? (
+                <>
+                  <p className="font-semibold text-sm text-blue-800">Break Reminder</p>
+                  <p className="text-xs mt-1 text-blue-700">{rem.message}</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-sm text-black">{rem.clientName}</p>
+                  <p className="text-xs text-gray-600">{rem.clientContact}</p>
 
-              <p className="text-xs text-gray-800 mt-1">
-                <span className="font-semibold">Date:</span> {rem.date}
-              </p>
-              <p className="text-xs text-gray-800">
-                <span className="font-semibold">Time:</span> {rem.time}
-              </p>
+                  <p className="text-xs text-gray-800 mt-1">
+                    <span className="font-semibold">Date:</span> {rem.date}
+                  </p>
+                  <p className="text-xs text-gray-800">
+                    <span className="font-semibold">Time:</span> {rem.time}
+                  </p>
 
-              <p className="text-xs mt-1 text-gray-700">{rem.message}</p>
+                  <p className="text-xs mt-1 text-gray-700">{rem.message}</p>
+                </>
+              )}
             </div>
 
-            <div className="flex flex-col gap-3 ml-3">
-              <a href={`tel:${rem.clientContact}`}>
-                <Phone className="w-4 h-4 text-green-600 cursor-pointer" />
-              </a>
+            {rem.type !== 'break' && (
+              <div className="flex flex-col gap-3 ml-3">
+                <a href={`tel:${rem.clientContact}`}>
+                  <Phone className="w-4 h-4 text-green-600 cursor-pointer" />
+                </a>
 
-              <Trash2
-                className="w-4 h-4 text-red-500 cursor-pointer"
-                onClick={() => handleDelete(rem._id)}
-              />
-            </div>
+                <Trash2
+                  className="w-4 h-4 text-red-500 cursor-pointer"
+                  onClick={() => handleDelete(rem._id)}
+                />
+              </div>
+            )}
           </div>
         ))
       )}

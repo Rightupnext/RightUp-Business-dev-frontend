@@ -5,6 +5,9 @@ import Navbar from "../components/Navbar";
 import ProjTaskManagement from "./proj-management/proj-task-management";
 import ProjManagementProfile from "./proj-management/ProjManagement-profile";
 import ProjectHandle from "./proj-management/ProjectHandle";
+import ProjectPermission from "./proj-management/Permission";
+import ProjectHolidays from "./proj-management/ProjectHolidays";
+import LeaveReport from "./proj-management/LeaveReport";
 import { AuthContext } from "../context/AuthContext";
 
 export default function ProjectDashboardLayout() {
@@ -21,6 +24,9 @@ export default function ProjectDashboardLayout() {
             <Route path="project-tasks" element={<ProjTaskManagement />} />
             <Route path="project-profile" element={<ProjManagementProfile />} />
             <Route path="project" element={<ProjectHandle />} />
+            <Route path="project-permission" element={<ProjectPermission />} />
+            <Route path="project-holidays" element={<ProjectHolidays />} />
+            <Route path="project-leave-report" element={<LeaveReport />} />
           </Routes>
         </div>
       </div>

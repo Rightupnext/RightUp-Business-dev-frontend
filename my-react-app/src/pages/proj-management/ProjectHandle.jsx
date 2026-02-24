@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import axios from "axios";
-import { Trash2 } from "lucide-react";
+import { Trash2, Upload, FileText, Eye } from "lucide-react";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 import { AuthContext } from "../../context/AuthContext";
@@ -74,23 +74,41 @@ export default function ProjectHandle() {
   // ✅ Save or update project
   const handleSave = async (project, index) => {
     try {
+      const formData = new FormData();
+      formData.append("projectName", project.projectName);
+      formData.append("projectType", project.projectType);
+      formData.append("startDate", project.startDate);
+      formData.append("endDate", project.endDate);
+      formData.append("requirements", project.requirements);
+      formData.append("status", project.status);
+      formData.append("user", user._id);
+
+      // Append files if any
+      if (project.files) {
+        project.files.forEach((file) => {
+          formData.append("files", file);
+        });
+      }
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      };
+
       if (project._id) {
         const res = await axios.put(
           `${API_BASE}/projects/${project._id}`,
-          project,
-          { headers: { Authorization: `Bearer ${token}` } }
+          formData,
+          config
         );
         const updated = [...projects];
         updated[index] = res.data;
         setProjects(updated);
         toast.success("Project updated successfully");
       } else {
-        // ✅ attach user ID before creating
-       const res = await axios.post(
-  `${API_BASE}/projects`,
-  project,
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+        const res = await axios.post(`${API_BASE}/projects`, formData, config);
 
         const updated = [...projects];
         updated[index] = res.data;
@@ -101,6 +119,17 @@ export default function ProjectHandle() {
       console.error("Error saving project:", err);
       toast.error("Failed to save project");
     }
+  };
+
+  const handleFileChange = (index, e) => {
+    const selectedFiles = Array.from(e.target.files);
+    const updated = [...projects];
+    updated[index].files = [...(updated[index].files || []), ...selectedFiles];
+    setProjects(updated);
+  };
+
+  const handleViewFile = (filePath) => {
+    window.open(`${API_BASE}${filePath}`, "_blank");
   };
 
   return (
@@ -124,11 +153,10 @@ export default function ProjectHandle() {
           >
             {/* Status Label */}
             <div
-              className={`absolute top-2 right-10 px-3 py-1 text-xs font-semibold rounded ${
-                project.status === "Completed"
-                  ? "bg-green-500 text-white"
-                  : "bg-red-500 text-white"
-              }`}
+              className={`absolute top-2 right-10 px-3 py-1 text-xs font-semibold rounded ${project.status === "Completed"
+                ? "bg-green-500 text-white"
+                : "bg-red-500 text-white"
+                }`}
             >
               {project.status}
             </div>
@@ -186,17 +214,83 @@ export default function ProjectHandle() {
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium">
-                  Requirements *
-                </label>
-                <InputField
-                  type="text"
-                  value={project.requirements}
-                  onChange={(e) =>
-                    handleChange(index, "requirements", e.target.value)
-                  }
-                />
+              <div className="sm:col-span-1">
+                <label className="block text-sm font-medium">Requirements *</label>
+                <div className="flex gap-2 items-start mt-1">
+                  <textarea
+                    value={project.requirements}
+                    onChange={(e) =>
+                      handleChange(index, "requirements", e.target.value)
+                    }
+                    className="border w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-[100px]"
+                    placeholder="Enter project requirements..."
+                  />
+                  <div className="flex flex-col gap-2">
+                    <label className="cursor-pointer bg-gray-100 p-2 rounded hover:bg-gray-200 border transition-colors shadow-sm">
+                      <Upload size={20} className="text-blue-600" />
+                      <input
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleFileChange(index, e)}
+                        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* File List */}
+                <div className="mt-3 space-y-2">
+                  {/* Existing Files */}
+                  {project.requirementFiles?.map((file, fIdx) => (
+                    <div
+                      key={`exist-${fIdx}`}
+                      className="flex items-center justify-between bg-blue-50 p-2 rounded border border-blue-100"
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <FileText size={16} className="text-blue-500 shrink-0" />
+                        <span className="text-xs truncate text-blue-700">
+                          {file.split("/").pop()}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleViewFile(file)}
+                        className="text-blue-600 hover:text-blue-800 p-1"
+                        title="View File"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Newly Selected Files */}
+                  {project.files?.map((file, fIdx) => (
+                    <div
+                      key={`new-${fIdx}`}
+                      className="flex items-center justify-between bg-green-50 p-2 rounded border border-green-100"
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <FileText size={16} className="text-green-500 shrink-0" />
+                        <span className="text-xs truncate text-green-700">
+                          {file.name} (Pending)
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const updated = [...projects];
+                          updated[index].files = updated[index].files.filter(
+                            (_, i) => i !== fIdx
+                          );
+                          setProjects(updated);
+                        }}
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="Remove"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div>

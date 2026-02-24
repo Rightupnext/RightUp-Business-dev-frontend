@@ -1,5 +1,8 @@
 import React, { useState, useMemo } from "react";
-import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon, DocumentIcon, PhotoIcon, PaperClipIcon } from "@heroicons/react/24/outline";
+
+const API_BASE = import.meta.env.VITE_BASE;
+const BACKEND_URL = API_BASE.replace("/api", ""); // Assuming API_BASE is something like http://localhost:5000/api
 
 export default function ClientTable({ data, onEdit, onDelete }) {
   const clients = Array.isArray(data) ? data : [];
@@ -60,6 +63,7 @@ export default function ClientTable({ data, onEdit, onDelete }) {
                 "Reminder Date",
                 "Reminder Time (AM/PM)",
                 "Reminder Message",
+                "Files",
                 "Actions",
               ].map((header) => (
                 <th
@@ -127,6 +131,38 @@ export default function ClientTable({ data, onEdit, onDelete }) {
                     <td className="p-3 whitespace-nowrap">
                       {reminder.message || "-"}
                     </td>
+
+                    {/* 📎 Files Column */}
+                    <td className="p-3 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        {client.attachments && client.attachments.length > 0 ? (
+                          client.attachments.map((file, i) => {
+                            const fileUrl = `${BACKEND_URL}${file.url}`;
+                            return (
+                              <a
+                                key={i}
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={file.name}
+                                className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-[#5B4FE8]"
+                              >
+                                {file.mimetype?.includes("pdf") ? (
+                                  <DocumentIcon className="h-5 w-5" />
+                                ) : file.mimetype?.startsWith("image/") ? (
+                                  <PhotoIcon className="h-5 w-5" />
+                                ) : (
+                                  <PaperClipIcon className="h-5 w-5" />
+                                )}
+                              </a>
+                            );
+                          })
+                        ) : (
+                          <span className="text-gray-400 text-xs">No files</span>
+                        )}
+                      </div>
+                    </td>
+
                     <td className="p-3 whitespace-nowrap">
                       <div className="flex gap-2 justify-center">
                         <button

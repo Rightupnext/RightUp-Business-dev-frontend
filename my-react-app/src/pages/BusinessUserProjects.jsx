@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import InputField from "../components/InputField";
 import toast, { Toaster } from "react-hot-toast";
+import { FileText, Eye } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_BASE;
 
@@ -30,7 +31,7 @@ export default function BusinessUserProjects() {
       setMember(res.data);
     } catch (err) {
       console.error("Error fetching member details:", err);
-     
+
     }
   };
 
@@ -42,10 +43,14 @@ export default function BusinessUserProjects() {
       setProjects(res.data);
     } catch (err) {
       console.error("Error fetching user projects:", err);
-     
+
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewFile = (filePath) => {
+    window.open(`${API_BASE}${filePath}`, "_blank");
   };
 
   return (
@@ -72,7 +77,9 @@ export default function BusinessUserProjects() {
       <h2 className="text-2xl font-semibold mb-2">Projects Handled</h2>
 
       {loading ? (
-        <p className="text-gray-500">Loading...</p>
+        <div className="flex justify-center items-center py-8">
+          <div className="w-10 h-10 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
       ) : projects.length === 0 ? (
         <p className="text-gray-500">No projects found for this member.</p>
       ) : (
@@ -83,11 +90,10 @@ export default function BusinessUserProjects() {
               className="border rounded-md p-4 shadow-md bg-white relative"
             >
               <div
-                className={`absolute top-2 right-3 px-3 py-1 text-xs font-semibold rounded ${
-                  project.status === "Completed"
+                className={`absolute top-2 right-3 px-3 py-1 text-xs font-semibold rounded ${project.status === "Completed"
                     ? "bg-green-500 text-white"
                     : "bg-yellow-500 text-white"
-                }`}
+                  }`}
               >
                 {project.status}
               </div>
@@ -139,11 +145,33 @@ export default function BusinessUserProjects() {
                   <label className="block text-sm font-medium">
                     Requirements
                   </label>
-                  <InputField
-                    type="text"
-                    value={project.requirements || ""}
-                    readOnly
-                  />
+                  <div className="border w-full p-2 rounded bg-gray-50 text-gray-700 min-h-[60px] whitespace-pre-wrap">
+                    {project.requirements || "No requirements specified."}
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium mb-1">
+                    Project Files
+                  </label>
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent flex-nowrap">
+                    {project.requirementFiles && project.requirementFiles.length > 0 ? (
+                      project.requirementFiles.map((file, fIdx) => (
+                        <div
+                          key={fIdx}
+                          onClick={() => handleViewFile(file)}
+                          className="flex flex-col items-center gap-1 bg-blue-50 p-2 rounded border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors shrink-0 min-w-[100px]"
+                        >
+                          <FileText size={24} className="text-blue-500" />
+                          <span className="text-[10px] text-blue-700 font-medium text-center truncate w-24">
+                            {file.split("/").pop()}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">No files uploaded.</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

@@ -10,6 +10,7 @@ import Navbar from "../components/Navbar";
 import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
 import BusinessUserProjects from "./BusinessUserProjects";
+import BusinessHolidays from "./BusinessHoliday";
 
 const API_BASE = import.meta.env.VITE_BASE;
 
@@ -58,7 +59,7 @@ export default function BusinessDashboardLayout() {
             <Route path="tasks" element={<BusinessTaskView />} />
             <Route path="monthly-report" element={<MonthlyReport />} />
             <Route path="business-user-projects/:id" element={<BusinessUserProjects />} />
-
+             <Route path="business-holidays" element={<BusinessHolidays />} />
 
 
           </Routes>

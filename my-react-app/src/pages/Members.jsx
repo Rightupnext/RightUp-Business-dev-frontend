@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Trash2 } from "lucide-react"; // DELETE ICON
 
 const API_BASE = import.meta.env.VITE_BASE;
 
@@ -11,19 +12,37 @@ export default function Members() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // ---------------- DELETE MEMBER ----------------
+  const deleteMember = async (id) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+
+    try {
+      await axios.delete(`${API_BASE}/auth/delete/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      fetchMembers(); // refresh list
+    } catch (err) {
+      console.error("Delete failed:", err);
+      alert("Failed to delete user.");
+    }
+  };
+
+  // ---------------- FETCH MEMBERS ----------------
+  const fetchMembers = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/profile/all-project-users`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMembers(res.data);
+    } catch (err) {
+      console.error("Error fetching members:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/profile/all-project-users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setMembers(res.data);
-      } catch (err) {
-        console.error("Error fetching members:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchMembers();
   }, [token]);
 
@@ -47,7 +66,7 @@ export default function Members() {
                   "Email",
                   "Address",
                   "Blood Group",
-                  // "Profile Image",
+                  "Action",
                 ].map((header) => (
                   <th
                     key={header}
@@ -72,9 +91,9 @@ export default function Members() {
 
                     <td
                       onClick={() =>
-                      
-                        navigate(`/business/business-user-projects/${member._id}`)
-
+                        navigate(
+                          `/business/business-user-projects/${member._id}`
+                        )
                       }
                       className="px-4 py-3 text-blue-600 cursor-pointer hover:underline whitespace-nowrap"
                     >
@@ -97,19 +116,15 @@ export default function Members() {
                       {member.bloodGroup || "-"}
                     </td>
 
-                    {/* <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                      {member.profileImage ? (
-                        <img
-                          src={`${API_BASE.replace("/api", "")}/${
-                            member.profileImage
-                          }`}
-                          alt="Profile"
-                          className="w-10 h-10 rounded-full object-cover border"
-                        />
-                      ) : (
-                        <span className="text-gray-400 italic">No Image</span>
-                      )}
-                    </td> */}
+                    {/* ------------ DELETE ICON BUTTON ------------ */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <button
+                        onClick={() => deleteMember(member._id)}
+                        className="p-2 rounded-full hover:bg-red-100 transition"
+                      >
+                        <Trash2 className="w-5 h-5 text-red-600" />
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
