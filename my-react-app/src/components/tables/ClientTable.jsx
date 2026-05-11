@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { PencilIcon, TrashIcon, DocumentIcon, PhotoIcon, PaperClipIcon } from "@heroicons/react/24/outline";
 
 const API_BASE = import.meta.env.VITE_BASE;
-const BACKEND_URL = API_BASE.replace("/api", ""); // Assuming API_BASE is something like http://localhost:5000/api
+
 
 export default function ClientTable({ data, onEdit, onDelete }) {
   const clients = Array.isArray(data) ? data : [];
@@ -137,7 +137,7 @@ export default function ClientTable({ data, onEdit, onDelete }) {
                       <div className="flex gap-2">
                         {client.attachments && client.attachments.length > 0 ? (
                           client.attachments.map((file, i) => {
-                            const fileUrl = `${BACKEND_URL}${file.url}`;
+                            const fileUrl = `${API_BASE}${file.url}`;
                             return (
                               <a
                                 key={i}

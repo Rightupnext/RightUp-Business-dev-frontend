@@ -60,19 +60,22 @@ export default function BusinessTaskView() {
   };
 
   // ✅ Convert UTC or raw time string to IST with AM/PM
-  const formatToISTTime = (timeString) => {
-    if (!timeString) return "-";
-    const date = new Date(`1970-01-01T${timeString}Z`); // interpret as UTC
-    if (isNaN(date)) return timeString;
-    return date.toLocaleTimeString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      hour: "2-digit",
-      minute: "2-digit",
+const formatToISTTime = (isoString) => {
+  if (!isoString) return "-";
 
-      hour12: true, // ✅ show AM/PM
-    });
-  };
+  const date = new Date(isoString); // directly parse ISO string
+  if (isNaN(date)) return "-";
 
+  const formatted = date.toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  // Convert "10:43 PM" → "10.43 pm"
+  return formatted.replace(":", ".").toLowerCase();
+};
   const formatDate = (iso) => {
     if (!iso) return "-";
     const d = new Date(iso);

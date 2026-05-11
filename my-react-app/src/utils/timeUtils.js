@@ -8,15 +8,22 @@ export const calculateLiveWorkingHours = (group) => {
 
     const toDate = (timeStr) => {
         if (!timeStr) return null;
-        const date = new Date();
 
+        // ISO string (new format)
+        if (timeStr.includes("T") && timeStr.includes("Z")) {
+            const date = new Date(timeStr);
+            if (!isNaN(date)) return date;
+        }
+
+        const date = new Date();
         if (timeStr.includes(" ")) {
             const [time, modifier] = timeStr.split(" ");
             let [hours, minutes] = time.split(":").map(Number);
-            if (modifier === "PM" && hours !== 12) hours += 12;
-            if (modifier === "AM" && hours === 12) hours = 0;
+            const isPM = modifier.toLowerCase() === "pm";
+            if (isPM && hours !== 12) hours += 12;
+            if (!isPM && hours === 12) hours = 0;
             date.setHours(hours, minutes, 0, 0);
-        } else {
+        } else if (timeStr.includes(":")) {
             const parts = timeStr.split(":");
             const hours = parseInt(parts[0], 10);
             const minutes = parseInt(parts[1], 10);
@@ -39,12 +46,17 @@ export const calculateLiveWorkingHours = (group) => {
 
     breaks.forEach(({ in: breakIn, out: breakOut }) => {
         if (breakIn && breakOut) {
-            const breakDuration = toDate(breakOut) - toDate(breakIn);
-            totalMs -= breakDuration;
+            const bIn = toDate(breakIn);
+            const bOut = toDate(breakOut);
+            if (bIn && bOut) {
+                totalMs -= (bOut - bIn);
+            }
         } else if (breakIn && !breakOut) {
             // Active break - subtract till now
-            const breakDuration = new Date() - toDate(breakIn);
-            totalMs -= breakDuration;
+            const bIn = toDate(breakIn);
+            if (bIn) {
+                totalMs -= (new Date() - bIn);
+            }
         }
     });
 
@@ -58,18 +70,33 @@ export const calculateLiveWorkingHours = (group) => {
 };
 
 /**
- * Format time-only string to IST
- * @param {string} timeString - HH:mm:ss or HH:mm AM/PM
+ * Format time-only string or ISO string to IST
+ * @param {string} timeString - ISO string or HH:mm:ss or HH:mm AM/PM
  * @returns {string} - Formatted time
  */
 export const formatToISTTime = (timeString) => {
-    if (!timeString) return "-";
+    if (!timeString || timeString === "-") return "-";
 
-    // If already in 12-hour format with AM/PM, it might be from toLocaleTimeString
-    if (timeString.includes("AM") || timeString.includes("PM")) return timeString;
+    // If it's an ISO string (contains T and Z)
+    if (timeString.includes("T") && timeString.includes("Z")) {
+        const date = new Date(timeString);
+        if (isNaN(date.getTime())) return timeString;
+        return date.toLocaleTimeString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+        });
+    }
 
-    const date = new Date(`1970-01-01T${timeString}Z`); // Treat as UTC
-    if (isNaN(date)) return timeString;
+    // If it's already in 12-hour format with AM/PM
+    if (timeString.toLowerCase().includes("am") || timeString.toLowerCase().includes("pm")) {
+        return timeString;
+    }
+
+    // Fallback for HH:mm:ss (legacy UTC format)
+    const date = new Date(`1970-01-01T${timeString}${timeString.length === 5 ? ":00" : ""}Z`);
+    if (isNaN(date.getTime())) return timeString;
 
     return date.toLocaleTimeString("en-IN", {
         timeZone: "Asia/Kolkata",

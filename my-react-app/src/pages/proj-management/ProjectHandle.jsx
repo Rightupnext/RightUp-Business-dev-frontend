@@ -132,6 +132,23 @@ export default function ProjectHandle() {
     window.open(`${API_BASE}${filePath}`, "_blank");
   };
 
+  const handleDeleteFile = async (projectId, filePath, projectIndex) => {
+    if (!window.confirm("Are you sure you want to delete this file?")) return;
+    try {
+      const res = await axios.delete(`${API_BASE}/projects/${projectId}/file`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { filePath },
+      });
+      const updated = [...projects];
+      updated[projectIndex] = res.data.project;
+      setProjects(updated);
+      toast.success("File deleted successfully");
+    } catch (err) {
+      console.error("Error deleting file:", err);
+      toast.error("Failed to delete file");
+    }
+  };
+
   return (
     <div className="p-6 mt-16">
       <Toaster position="top-right" reverseOrder={false} />
@@ -253,13 +270,22 @@ export default function ProjectHandle() {
                           {file.split("/").pop()}
                         </span>
                       </div>
-                      <button
-                        onClick={() => handleViewFile(file)}
-                        className="text-blue-600 hover:text-blue-800 p-1"
-                        title="View File"
-                      >
-                        <Eye size={16} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleViewFile(file)}
+                          className="text-blue-600 hover:text-blue-800 p-1"
+                          title="View File"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFile(project._id, file, index)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Delete File"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   ))}
 

@@ -94,13 +94,7 @@ export default function ProjTaskManagement() {
   const addTask = async (groupId) => {
     try {
       // 🕒 Get current IST time
-      const now = new Date().toLocaleTimeString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true, // ✅ shows AM/PM
-      });
+      const now = new Date().toISOString();
 
       const payload = { timing: now };
 
@@ -398,12 +392,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
   // ✅ FIX → Moving saveEndTiming INSIDE TaskRow
   const saveEndTiming = async () => {
     try {
-      const now = new Date().toLocaleTimeString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
+      const now = new Date().toISOString();
 
       const res = await axios.patch(
         `${API_BASE}/tasks/groups/${groupId}/tasks/${task._id}`,
@@ -465,14 +454,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
 
         <td className="p-2 align-top">
           <div className="border border-gray-200 rounded-md w-full bg-gray-50 text-gray-600 min-h-[80px] flex items-center justify-center font-medium">
-            {task.timing
-              ? new Date(`1970-01-01T${task.timing}Z`).toLocaleTimeString("en-IN", {
-                timeZone: "Asia/Kolkata",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })
-              : "-"}
+            {formatToISTTime(task.timing)}
           </div>
         </td>
 
@@ -485,7 +467,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
               : "bg-sky-600 text-white hover:bg-sky-700 shadow-sm active:scale-95"
               }`}
           >
-            {task.endTiming ? task.endTiming : (
+            {task.endTiming ? formatToISTTime(task.endTiming) : (
               <div className="flex flex-col items-center">
                 <span className="text-[10px] uppercase opacity-80">Stop</span>
                 <span>End Timing</span>
