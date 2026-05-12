@@ -32,7 +32,10 @@ function AppContent() {
   return (
     <>
       <Notifications />
-     
+      <Toaster
+  position="top-center"
+  reverseOrder={false}
+/>
 
       <Routes>
         {/* 🟢 Login / Root route */}

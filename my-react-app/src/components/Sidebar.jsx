@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import {
   HomeIcon,
+  ChartBarIcon,
   UsersIcon,
   UserGroupIcon,
   ClipboardDocumentIcon,
@@ -14,6 +15,7 @@ import {
 // ✅ Menus without leading slashes
 const BUSINESS_MENU = [
   { name: "Dashboard", icon: HomeIcon, path: "main-dashboard" },
+  { name: "Analytics Report", icon: ChartBarIcon, path: "analytics-report" },
   { name: "Clients", icon: UsersIcon, path: "clients" },
   { name: "Members", icon: UserGroupIcon, path: "members" },
   { name: "Tasks", icon: ClipboardDocumentIcon, path: "tasks" },

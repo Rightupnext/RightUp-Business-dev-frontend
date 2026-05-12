@@ -38,6 +38,9 @@ export default function ProjectHandle() {
         projectType: "",
         startDate: "",
         endDate: "",
+        expectedEndDate: "",
+        startTime: "",
+        endTime: "",
         requirements: "",
         status: "Inprogress",
         user: user._id, // ✅ attach user ID
@@ -82,6 +85,9 @@ export default function ProjectHandle() {
       formData.append("requirements", project.requirements);
       formData.append("status", project.status);
       formData.append("user", user._id);
+      formData.append("expectedEndDate", project.expectedEndDate);
+      formData.append("startTime", project.startTime);
+      formData.append("endTime", project.endTime);
 
       // Append files if any
       if (project.files) {
@@ -230,6 +236,38 @@ export default function ProjectHandle() {
                   }
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium">Expected End Date *</label>
+                <InputField
+                  type="date"
+                  value={project.expectedEndDate}
+                  onChange={(e) =>
+                    handleChange(index, "expectedEndDate", e.target.value)
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Start Time *</label>
+                <InputField
+                  type="time"
+                  value={project.startTime}
+                  onChange={(e) =>
+                    handleChange(index, "startTime", e.target.value)
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">End Time *</label>
+                <InputField
+                  type="time"
+                  value={project.endTime}
+                  onChange={(e) =>
+                    handleChange(index, "endTime", e.target.value)
+                  }
+                />
+              </div>
+                   
 
               <div className="sm:col-span-1">
                 <label className="block text-sm font-medium">Requirements *</label>

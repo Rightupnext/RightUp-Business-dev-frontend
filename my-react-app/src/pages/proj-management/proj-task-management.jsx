@@ -6,7 +6,11 @@ import { ReminderContext } from "../../context/ReminderContext";
 import Button from "../../components/Button";
 import { TrashIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { FaUpload } from "react-icons/fa6";
-import { calculateLiveWorkingHours, formatToISTTime, formatToISTDate as formatToIST } from "../../utils/timeUtils";
+import {
+  calculateLiveWorkingHours,
+  formatToISTTime,
+  formatToISTDate as formatToIST,
+} from "../../utils/timeUtils";
 
 const API_BASE = import.meta.env.VITE_BASE;
 
@@ -20,24 +24,42 @@ function debounce(fn, wait) {
 
 // Shared utils imported from timeUtils
 export default function ProjTaskManagement() {
-  const { token } = useContext(AuthContext);
+  const { token, user } = useContext(AuthContext);
   const { fetchTodayGroup } = useContext(ReminderContext); // ✅ Add this
   const [groups, setGroups] = useState([]);
   const [filterDate, setFilterDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [liveTime, setLiveTime] = useState(Date.now()); // For live timer updates
   const headers = { headers: { Authorization: `Bearer ${token}` } };
+  const [projects, setProjects] = useState([]);
 
+  const fetchProjects = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/projects/user/${user?._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setProjects(res.data);
+    } catch (err) {
+      console.error("Error fetching projects:", err);
+      toast.error("Failed to load projects");
+    }
+  };
+
+  // fetch projects when user changes
+  useEffect(() => {
+    if (user?._id) fetchProjects();
+  }, [user?._id]);
+
+  // fetch groups when filterDate changes
   useEffect(() => {
     fetchGroups();
-    // eslint-disable-next-line
   }, [filterDate]);
-
+  console.log("projects", projects);
   // Live timer - updates every second for active groups
   useEffect(() => {
     const timer = setInterval(() => {
       // Only update if there's at least one active group (timeIn but no timeOut)
-      const hasActiveGroup = groups.some(g => g.timeIn && !g.timeOut);
+      const hasActiveGroup = groups.some((g) => g.timeIn && !g.timeOut);
       if (hasActiveGroup) {
         setLiveTime(Date.now());
       }
@@ -91,25 +113,104 @@ export default function ProjTaskManagement() {
     }
   };
 
-  const addTask = async (groupId) => {
-    try {
-      // 🕒 Get current IST time
-      const now = new Date().toISOString();
+const addTask = async (groupId) => {
+  try {
+    // Find current group
+    const currentGroup = groups.find((g) => g._id === groupId);
 
-      const payload = { timing: now };
+    // Check active task
+    const activeTask = currentGroup?.tasks?.find(
+      (t) => !t.endTiming
+    );
 
-      const res = await axios.post(
-        `${API_BASE}/tasks/groups/${groupId}/tasks`,
-        payload,
-        headers,
-      );
+    // Prevent creating another task
+    if (activeTask) {
+      toast.custom((t) => (
+        <div
+          className={`${
+            t.visible ? "animate-enter" : "animate-leave"
+          } max-w-md w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex overflow-hidden border border-orange-100`}
+        >
+          {/* Left Content */}
+          <div className="flex-1 p-4">
+            <div className="flex items-start gap-3">
+              {/* Icon */}
+              <div className="flex-shrink-0 w-11 h-11 rounded-full bg-orange-100 flex items-center justify-center">
+                <span className="text-xl">⏱️</span>
+              </div>
 
-      setGroups((prev) => prev.map((g) => (g._id === groupId ? res.data : g)));
-      toast.success("Task added");
-    } catch {
-      toast.error("Failed to add task");
+              {/* Message */}
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900">
+                  Active Task Running
+                </p>
+
+                <p className="mt-1 text-sm text-gray-500 leading-relaxed">
+                  Please end your current task before creating a new one.
+                </p>
+
+                <div
+                  className="mt-3 inline-flex items-center gap-2
+                  bg-orange-50 text-orange-700 px-3 py-1
+                  rounded-full text-xs font-medium"
+                >
+                  End previous task first
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Close */}
+          <div className="flex border-l border-gray-100">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-4 text-sm font-medium text-orange-600 hover:bg-orange-50 transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ));
+
+      return;
     }
-  };
+
+    // Current Time
+    const now = new Date().toISOString();
+
+    // Create Task Payload
+    const payload = {
+      timing: now,
+      endTiming: null,
+      projname: "",
+      projectId: null,
+      name: "",
+      issue: "",
+      status: "",
+    };
+
+    // Create Task API
+    const res = await axios.post(
+      `${API_BASE}/tasks/groups/${groupId}/tasks`,
+      payload,
+      headers
+    );
+
+    // Update State
+    setGroups((prev) =>
+      prev.map((g) =>
+        g._id === groupId ? res.data : g
+      )
+    );
+
+    // Success Toast
+    toast.success("New task created");
+  } catch (err) {
+    console.error(err);
+
+    toast.error("Failed to create task");
+  }
+};
 
   const deleteGroup = async (groupId) => {
     if (!confirm("Delete this group?")) return;
@@ -156,14 +257,22 @@ export default function ProjTaskManagement() {
       prev.map((g) =>
         g._id === groupId
           ? {
-            ...g,
-            tasks: g.tasks.map((t) =>
-              t._id === taskId ? { ...t, ...patch } : t,
-            ),
-          }
+              ...g,
+              tasks: g.tasks.map((t) =>
+                t._id === taskId
+                  ? {
+                      ...t,
+                      ...patch,
+                      projectId: patch.projectId ?? t.projectId,
+                      projname: patch.projname ?? t.projname,
+                    }
+                  : t,
+              ),
+            }
           : g,
       ),
     );
+
     if (persist) debouncedSave(groupId, taskId, patch);
   };
 
@@ -225,17 +334,19 @@ export default function ProjTaskManagement() {
               ].map((type) => {
                 // Disable break buttons if timeout is clicked
                 const isBreakButton = type.includes("Break");
-                const isDisabled = !!group[type] || (isBreakButton && !!group.timeOut);
+                const isDisabled =
+                  !!group[type] || (isBreakButton && !!group.timeOut);
 
                 return (
                   <button
                     key={type}
                     disabled={isDisabled}
                     onClick={() => setTime(group._id, type)}
-                    className={`px-3 py-1 text-sm cursor-pointer rounded text-white ${isDisabled
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-sky-600 hover:bg-blue-700"
-                      }`}
+                    className={`px-3 py-1 text-sm cursor-pointer rounded text-white ${
+                      isDisabled
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-sky-600 hover:bg-blue-700"
+                    }`}
                   >
                     {type.replace(/([A-Z])/g, " $1")}
                   </button>
@@ -249,15 +360,18 @@ export default function ProjTaskManagement() {
               </button>
 
               {/* Working Hours Display - Live updating */}
-              <div className={`px-4 py-1 text-sm rounded-lg font-semibold ${group.timeIn && !group.timeOut
-                ? 'bg-green-100 text-green-800 border border-green-300 animate-pulse'
-                : group.timeIn
-                  ? 'bg-green-100 text-green-800 border border-green-300'
-                  : 'bg-gray-100 text-gray-500 border border-gray-300'
-                }`}>
+              <div
+                className={`px-4 py-1 text-sm rounded-lg font-semibold ${
+                  group.timeIn && !group.timeOut
+                    ? "bg-green-100 text-green-800 border border-green-300 animate-pulse"
+                    : group.timeIn
+                      ? "bg-green-100 text-green-800 border border-green-300"
+                      : "bg-gray-100 text-gray-500 border border-gray-300"
+                }`}
+              >
                 {group.timeIn
                   ? `⏱️ ${calculateLiveWorkingHours(group)}`
-                  : '⏱️ 0h 0m'}
+                  : "⏱️ 0h 0m"}
               </div>
             </div>
           </div>
@@ -284,22 +398,35 @@ export default function ProjTaskManagement() {
 
           {/* Break Durations Display */}
           <div className="flex flex-wrap gap-3 mt-3">
-            {group.mgBreakDuration && group.mgBreakDuration !== '0h 0m' && (
+            {group.mgBreakDuration && group.mgBreakDuration !== "0h 0m" && (
               <div className="px-3 py-1 bg-blue-50 border border-blue-200 rounded text-sm">
-                <span className="text-xs text-blue-600 font-medium">MG Break: </span>
-                <span className="font-semibold text-blue-800">{group.mgBreakDuration}</span>
+                <span className="text-xs text-blue-600 font-medium">
+                  MG Break:{" "}
+                </span>
+                <span className="font-semibold text-blue-800">
+                  {group.mgBreakDuration}
+                </span>
               </div>
             )}
-            {group.lunchBreakDuration && group.lunchBreakDuration !== '0h 0m' && (
-              <div className="px-3 py-1 bg-orange-50 border border-orange-200 rounded text-sm">
-                <span className="text-xs text-orange-600 font-medium">Lunch Break: </span>
-                <span className="font-semibold text-orange-800">{group.lunchBreakDuration}</span>
-              </div>
-            )}
-            {group.eveBreakDuration && group.eveBreakDuration !== '0h 0m' && (
+            {group.lunchBreakDuration &&
+              group.lunchBreakDuration !== "0h 0m" && (
+                <div className="px-3 py-1 bg-orange-50 border border-orange-200 rounded text-sm">
+                  <span className="text-xs text-orange-600 font-medium">
+                    Lunch Break:{" "}
+                  </span>
+                  <span className="font-semibold text-orange-800">
+                    {group.lunchBreakDuration}
+                  </span>
+                </div>
+              )}
+            {group.eveBreakDuration && group.eveBreakDuration !== "0h 0m" && (
               <div className="px-3 py-1 bg-purple-50 border border-purple-200 rounded text-sm">
-                <span className="text-xs text-purple-600 font-medium">Evening Break: </span>
-                <span className="font-semibold text-purple-800">{group.eveBreakDuration}</span>
+                <span className="text-xs text-purple-600 font-medium">
+                  Evening Break:{" "}
+                </span>
+                <span className="font-semibold text-purple-800">
+                  {group.eveBreakDuration}
+                </span>
               </div>
             )}
           </div>
@@ -317,14 +444,30 @@ export default function ProjTaskManagement() {
             <table className="min-w-[1000px] w-full text-sm border-collapse">
               <thead className="bg-gray-50 sticky top-0 z-10 border-b">
                 <tr>
-                  <th className="p-3 text-left font-semibold text-gray-600 w-[20%]">Project</th>
-                  <th className="p-3 text-left font-semibold text-gray-600 w-[25%]">Task</th>
-                  <th className="p-3 text-left font-semibold text-gray-600 w-[10%]">Timing</th>
-                  <th className="p-3 text-left font-semibold text-gray-600 w-[6%]">End Timing</th>
-                  <th className="p-3 text-left font-semibold text-gray-600 w-[15%]">Issue</th>
-                  <th className="p-3 text-left font-semibold text-gray-600 w-[10%]">Status</th>
-                  <th className="p-3 text-center font-semibold text-gray-600 w-[3%]">Upload</th>
-                  <th className="p-3 text-center font-semibold text-gray-600 w-[3%]">Action</th>
+                  <th className="p-3 text-left font-semibold text-gray-600 w-[20%]">
+                    Project
+                  </th>
+                  <th className="p-3 text-left font-semibold text-gray-600 w-[25%]">
+                    Task
+                  </th>
+                  <th className="p-3 text-left font-semibold text-gray-600 w-[10%]">
+                    Timing
+                  </th>
+                  <th className="p-3 text-left font-semibold text-gray-600 w-[6%]">
+                    End Timing
+                  </th>
+                  <th className="p-3 text-left font-semibold text-gray-600 w-[15%]">
+                    Issue
+                  </th>
+                  <th className="p-3 text-left font-semibold text-gray-600 w-[10%]">
+                    Status
+                  </th>
+                  <th className="p-3 text-center font-semibold text-gray-600 w-[3%]">
+                    Upload
+                  </th>
+                  <th className="p-3 text-center font-semibold text-gray-600 w-[3%]">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -338,6 +481,7 @@ export default function ProjTaskManagement() {
                       onLocalChange={(patch, persist = true) =>
                         updateTaskLocal(group._id, task._id, patch, persist)
                       }
+                      projects={projects}
                       onDelete={() => deleteTask(group._id, task._id)}
                     />
                   ))
@@ -358,11 +502,11 @@ export default function ProjTaskManagement() {
 }
 
 // ✅ TaskRow Component
-function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
+function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects }) {
   const [showModal, setShowModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const headers = { headers: { Authorization: `Bearer ${token}` } };
-
+  const [showProjects, setShowProjects] = useState(false);
   const uploadImage = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -432,14 +576,122 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
   return (
     <>
       <tr className="border-b last:border-0 hover:bg-gray-50 transition-colors">
-        <td className="p-2 align-top">
-          <textarea
-            value={task.projname || ""}
-            onChange={(e) => onLocalChange({ projname: e.target.value })}
-            placeholder="Project name"
-            className="border border-gray-200 rounded-md px-3 py-2 w-full min-h-[80px] text-sm resize-none
-               focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          />
+        <td className="p-2 align-top relative">
+          {/* Input Area */}
+          <div
+            className={`border rounded-xl transition-all duration-200 bg-white overflow-hidden
+    ${
+      showProjects
+        ? "border-sky-500 ring-4 ring-sky-100 shadow-lg"
+        : "border-gray-200 hover:border-gray-300"
+    }`}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-3 pt-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                Project
+              </span>
+
+              {task.projectId && (
+                <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                  Selected
+                </span>
+              )}
+            </div>
+
+            {/* Textarea */}
+            <textarea
+              value={task.projname || ""}
+              placeholder="Search project or type custom project..."
+              onFocus={() => setShowProjects(true)}
+              onBlur={() => {
+                setTimeout(() => {
+                  setShowProjects(false);
+                }, 200);
+              }}
+              onChange={(e) => {
+                onLocalChange({
+                  projname: e.target.value,
+                  projectId: null,
+                });
+              }}
+              className="w-full px-3 py-2 min-h-[85px] text-sm resize-none
+      focus:outline-none bg-transparent placeholder:text-gray-400"
+            />
+          </div>
+
+          {/* Dropdown */}
+          {showProjects && (
+            <div
+              className="absolute left-0 right-0 mt-2 bg-white border border-gray-200
+      rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95"
+            >
+              {/* List */}
+              <div className="max-h-56 overflow-y-auto py-1">
+                {projects
+                  .filter((p) =>
+                    p.projectName
+                      .toLowerCase()
+                      .includes((task.projname || "").toLowerCase()),
+                  )
+                  .map((p) => (
+                    <div
+                      key={p._id}
+                      onMouseDown={() => {
+                        onLocalChange({
+                          projectId: p._id,
+                          projname: p.projectName,
+                        });
+
+                        setShowProjects(false);
+                      }}
+                      className="group px-4 py-3 cursor-pointer transition-all
+              hover:bg-sky-50 border-b border-gray-100 last:border-0"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">
+                            {p.projectName}
+                          </p>
+
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {p.projectType}
+                          </p>
+                        </div>
+
+                        <div
+                          className="w-2 h-2 rounded-full bg-sky-500
+                  opacity-0 group-hover:opacity-100 transition-opacity"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                {/* Empty State */}
+                {projects.filter((p) =>
+                  p.projectName
+                    .toLowerCase()
+                    .includes((task.projname || "").toLowerCase()),
+                ).length === 0 && (
+                  <div className="px-4 py-3 text-center">
+                    <p className="text-sm text-gray-500">
+                      No matching project found
+                    </p>
+
+                    {task.projname && (
+                      <div
+                        className="mt-3 inline-flex items-center gap-2
+                bg-sky-50 text-sky-700 px-3 py-2 rounded-xl text-sm font-medium"
+                      >
+                        ✨ Create:
+                        <span className="font-semibold">"{task.projname}"</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </td>
 
         <td className="p-2 align-top">
@@ -447,7 +699,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
             value={task.name || ""}
             onChange={(e) => onLocalChange({ name: e.target.value })}
             placeholder="Type task details..."
-            className="border border-gray-200 rounded-md px-3 py-2 w-full min-h-[80px] text-sm resize-none
+            className="border border-gray-200 rounded-md px-3 py-2 w-full min-h-[110px] text-sm resize-none
                focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           />
         </td>
@@ -462,12 +714,15 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
           <button
             disabled={!!task.endTiming}
             onClick={saveEndTiming}
-            className={`w-full min-h-[80px] flex items-center justify-center rounded-md text-sm font-semibold transition-all ${task.endTiming
-              ? "bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200"
-              : "bg-sky-600 text-white hover:bg-sky-700 shadow-sm active:scale-95"
-              }`}
+            className={`w-full min-h-[80px] flex items-center justify-center rounded-md text-sm font-semibold transition-all ${
+              task.endTiming
+                ? "bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200"
+                : "bg-sky-600 text-white hover:bg-sky-700 shadow-sm active:scale-95"
+            }`}
           >
-            {task.endTiming ? formatToISTTime(task.endTiming) : (
+            {task.endTiming ? (
+              formatToISTTime(task.endTiming)
+            ) : (
               <div className="flex flex-col items-center">
                 <span className="text-[10px] uppercase opacity-80">Stop</span>
                 <span>End Timing</span>
@@ -481,7 +736,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
             value={task.issue || ""}
             onChange={(e) => onLocalChange({ issue: e.target.value })}
             placeholder="Any issues?"
-            className="border border-gray-200 rounded-md px-3 py-2 w-full min-h-[80px] text-sm resize-none
+            className="border border-gray-200 rounded-md px-3 py-2 w-full min-h-[110px] text-sm resize-none
                focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           />
         </td>
@@ -491,7 +746,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token }) {
             value={task.status || ""}
             onChange={(e) => onLocalChange({ status: e.target.value })}
             placeholder="Status"
-            className="border border-gray-200 rounded-md px-3 py-2 w-full min-h-[80px] text-sm resize-none
+            className="border border-gray-200 rounded-md px-3 py-2 w-full min-h-[110px] text-sm resize-none
                focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           />
         </td>
