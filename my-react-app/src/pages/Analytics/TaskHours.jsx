@@ -3,13 +3,13 @@
  * e.g. 0.75 → "45 min", 7.5 → "7.5 hr", 90.5 → "90 hr 30 min"
  */
 function formatDuration(decimalHrs) {
-  if (!decimalHrs || decimalHrs <= 0) return "0 min";
-  const totalMins = Math.round(decimalHrs * 60);
+  if (!decimalHrs || decimalHrs <= 0) return "—";
+  const totalMins = Math.floor(decimalHrs * 60);
   if (totalMins < 60) return `${totalMins} min`;
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
   if (m === 0) return `${h} hr`;
-  return `${h} hr ${m} min`;
+  return `${h} hr ${m} min`;  // ← was using toFixed(2)
 }
 
 /**
@@ -18,7 +18,7 @@ function formatDuration(decimalHrs) {
  */
 function formatDurationSub(decimalHrs) {
   if (!decimalHrs || decimalHrs <= 0) return "0 min";
-  const totalMins = Math.round(decimalHrs * 60);
+  const totalMins = Math.floor(decimalHrs * 60);
   if (totalMins < 60) return `${totalMins} min`;
   const h = +(totalMins / 60).toFixed(2);
   return `${h} hr`;
@@ -89,7 +89,7 @@ export default function TaskHours({ filteredTasks }) {
     {
       label: "Total hours",
       value: formatDuration(totalHours),
-      sub: `${formatDurationSub(totalHours)} logged`,
+      // sub: `${formatDurationSub(totalHours)} logged`,
       icon: (
         <svg
           className="w-4 h-4"
@@ -107,48 +107,28 @@ export default function TaskHours({ filteredTasks }) {
       ),
       color: "text-violet-500",
     },
-    {
-      label: "Avg / task",
-      value: formatDuration(avgHours),
-      sub: `${formatDurationSub(avgHours)} per task`,
-      icon: (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-          />
-        </svg>
-      ),
-      color: "text-amber-500",
-    },
-    {
-      label: "Completion",
-      value: `${completionPct}%`,
-      sub: `${completedCount} done · ${pendingCount} pending`,
-      icon: (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
-      color: "text-green-500",
-    },
+    // {
+    //   label: "Avg / task",
+    //   value: formatDuration(avgHours),
+    //   sub: `${formatDurationSub(avgHours)} per task`,
+    //   icon: (
+    //     <svg
+    //       className="w-4 h-4"
+    //       fill="none"
+    //       stroke="currentColor"
+    //       viewBox="0 0 24 24"
+    //     >
+    //       <path
+    //         strokeLinecap="round"
+    //         strokeLinejoin="round"
+    //         strokeWidth={1.5}
+    //         d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+    //       />
+    //     </svg>
+    //   ),
+    //   color: "text-amber-500",
+    // },
+   
     {
       label: "Working days",
       value: `${workingDaysFromHours.toFixed(1)} Days`,
@@ -169,6 +149,27 @@ export default function TaskHours({ filteredTasks }) {
         </svg>
       ),
       color: "text-indigo-500",
+    },
+     {
+      label: "Completion",
+      value: `${completionPct}%`,
+      sub: `${completedCount} done · ${pendingCount} pending`,
+      icon: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      ),
+      color: "text-green-500",
     },
   ];
 

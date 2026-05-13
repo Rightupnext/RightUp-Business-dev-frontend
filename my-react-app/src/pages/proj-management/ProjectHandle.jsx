@@ -225,7 +225,16 @@ export default function ProjectHandle() {
                   }
                 />
               </div>
-
+                   <div>
+                <label className="block text-sm font-medium">Expected End Date *</label>
+                <InputField
+                  type="date"
+                  value={project.expectedEndDate}
+                  onChange={(e) =>
+                    handleChange(index, "expectedEndDate", e.target.value)
+                  }
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium">End Date *</label>
                 <InputField
@@ -236,16 +245,7 @@ export default function ProjectHandle() {
                   }
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium">Expected End Date *</label>
-                <InputField
-                  type="date"
-                  value={project.expectedEndDate}
-                  onChange={(e) =>
-                    handleChange(index, "expectedEndDate", e.target.value)
-                  }
-                />
-              </div>
+             
               <div>
                 <label className="block text-sm font-medium">Start Time *</label>
                 <InputField

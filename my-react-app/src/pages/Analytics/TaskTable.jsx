@@ -9,8 +9,12 @@ function formatDuration(startIso, endIso) {
   const diffMs = new Date(endIso) - new Date(startIso);
   if (diffMs <= 0) return null;
   const totalMins = Math.round(diffMs / 60000);
-  if (totalMins < 60) return { value: totalMins, unit: "min" };
-  return { value: +(totalMins / 60).toFixed(2), unit: "hr" };
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+
+  if (totalMins < 60) return { value: `${totalMins}`, unit: "min" };
+  if (m === 0) return { value: `${h}`, unit: "hr" };
+  return { value: `${h} hr ${m}`, unit: "min" };  // ← "7 hr 59 min"
 }
 
 /**
@@ -44,11 +48,11 @@ function exportToExcel(filteredTasks) {
             })
           : "—",
       Duration: duration ? `${duration.value} ${duration.unit}` : "—",
-      "Duration (hrs)": duration
-        ? duration.unit === "min"
-          ? +(duration.value / 60).toFixed(2)
-          : duration.value
-        : 0,
+      // "Duration (hrs)": duration
+      //   ? duration.unit === "min"
+      //     ? +(duration.value / 60).toFixed(2)
+      //     : duration.value
+      //   : 0,
       Status: done ? "Completed" : "Pending",
       Issue: task?.task?.issue || "",
     };

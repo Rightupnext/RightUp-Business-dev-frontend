@@ -18,8 +18,10 @@ function formatDuration(decimalHrs) {
   if (!decimalHrs || decimalHrs <= 0) return "—";
   const totalMins = Math.round(decimalHrs * 60);
   if (totalMins < 60) return `${totalMins} min`;
-  const h = +(totalMins / 60).toFixed(2);
-  return `${h} hr`;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  if (m === 0) return `${h} hr`;
+  return `${h} hr ${m} min`;  // ← was using toFixed(2)
 }
 
 /**
@@ -95,15 +97,15 @@ export default function TaskChart({ filteredTasks }) {
 
       {/* Summary pills */}
       <div className="flex items-center gap-3 mb-5">
-        <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5">
+        {/* <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5">
           <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="text-xs text-blue-500 font-medium">Total</span>
           <span className="text-xs font-semibold text-blue-700">{formatDuration(totalHrs)}</span>
-        </div>
-
+        </div> */}
+{/* 
         <div className="flex items-center gap-1.5 bg-violet-50 border border-violet-100 rounded-lg px-3 py-1.5">
           <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -111,7 +113,7 @@ export default function TaskChart({ filteredTasks }) {
           </svg>
           <span className="text-xs text-violet-500 font-medium">Avg / task</span>
           <span className="text-xs font-semibold text-violet-700">{formatDuration(avgHrs)}</span>
-        </div>
+        </div> */}
 
         <div className="ml-auto text-xs text-gray-400">
           {validTasks.length} of {filteredTasks.length} timed

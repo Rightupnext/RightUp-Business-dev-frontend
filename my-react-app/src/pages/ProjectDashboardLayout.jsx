@@ -9,12 +9,17 @@ import ProjectPermission from "./proj-management/Permission";
 import ProjectHolidays from "./proj-management/ProjectHolidays";
 import LeaveReport from "./proj-management/LeaveReport";
 import { AuthContext } from "../context/AuthContext";
+import { Toaster } from "react-hot-toast";
 
 export default function ProjectDashboardLayout() {
   const { user } = useContext(AuthContext);
 
   return (
     <div className="flex h-[100vh] flex-col">
+      <Toaster
+  position="top-center"
+  reverseOrder={false}
+/>
       <Navbar userName={user?.name} />
       <div className="flex flex-1">
         <Sidebar />
