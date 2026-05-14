@@ -454,6 +454,7 @@ function GroupCard({ group, projects, token, onSetTime, onDeleteGroup, onAddTask
                   <TaskRow
                     key={task._id}
                     groupId={group._id}
+                    groupDate={group.date}
                     task={task}
                     token={token}
                     onLocalChange={(patch, persist = true) =>
@@ -484,14 +485,16 @@ function GroupCard({ group, projects, token, onSetTime, onDeleteGroup, onAddTask
 }
 
 // ─── TaskRow ─────────────────────────────────────────────────────────────────
-function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects }) {
+function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,groupDate }) {
   const [showModal, setShowModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const headers = { headers: { Authorization: `Bearer ${token}` } };
   const [showProjects, setShowProjects] = useState(false);
 
   const isActive = !task.endTiming;
-
+  const today = new Date().toISOString().split("T")[0];
+  const isTodayTask = groupDate === today;
+  const isDisabled = !isTodayTask;
   const uploadImage = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -555,6 +558,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects }) {
               )}
             </div>
             <textarea
+            disabled={isDisabled}
               value={task.projname || ""}
               placeholder="Search or type project…"
               onFocus={() => setShowProjects(true)}
@@ -600,6 +604,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects }) {
         {/* ── Task Name ───────────────────────────────────────────── */}
         <td className="p-2 align-top">
           <textarea
+          disabled={isDisabled}
             value={task.name || ""}
             onChange={(e) => onLocalChange({ name: e.target.value })}
             placeholder="Describe the task…"
@@ -653,6 +658,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects }) {
             onChange={(e) => onLocalChange({ issue: e.target.value })}
             placeholder="Any blockers?"
             className="border border-slate-200 hover:border-slate-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 rounded-xl px-3 py-2 w-full min-h-[110px] text-sm resize-none focus:outline-none bg-white transition-all placeholder:text-slate-300"
+            disabled={isDisabled}
           />
         </td>
 
@@ -663,6 +669,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects }) {
             onChange={(e) => onLocalChange({ status: e.target.value })}
             placeholder="Status…"
             className="border border-slate-200 hover:border-slate-300 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 rounded-xl px-3 py-2 w-full min-h-[110px] text-sm resize-none focus:outline-none bg-white transition-all placeholder:text-slate-300"
+            disabled={isDisabled}
           />
         </td>
 
@@ -698,6 +705,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects }) {
         {/* ── Delete ──────────────────────────────────────────────── */}
         <td className="p-2 align-middle text-center">
           <button
+          disabled={isDisabled}
             onClick={onDelete}
             className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-transparent hover:border-red-100 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all"
           >

@@ -59,14 +59,21 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function TaskChart({ filteredTasks }) {
   if (!filteredTasks.length) return null;
 
-  const chartData = filteredTasks.map((t) => ({
-    name: shortTask(t?.task?.name || "No Task"),
-    hours:
-      t.task?.timing && t.task?.endTiming && t.task.endTiming !== ""
-        ? +((new Date(t.task.endTiming) - new Date(t.task.timing)) / 3600000).toFixed(4)
-        : 0,
-    done: !!(t.task?.endTiming && t.task.endTiming !== ""),
-  }));
+  // TaskChart.jsx (FULL FIX)
+
+const chartData = filteredTasks.map((t) => ({
+  name: shortTask(t?.task?.name || "No Task"),
+
+  // USING EFFECTIVE HOURS
+  hours: +(
+    ((t.task?.effectiveDurationMinutes || 0) / 60).toFixed(4)
+  ),
+
+  done: !!(
+    t.task?.endTiming &&
+    t.task.endTiming !== ""
+  ),
+}));
 
   // Summary stats
   const validTasks = chartData.filter((d) => d.hours > 0);

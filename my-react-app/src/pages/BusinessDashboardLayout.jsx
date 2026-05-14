@@ -12,6 +12,7 @@ import axios from "axios";
 import BusinessUserProjects from "./BusinessUserProjects";
 import BusinessHolidays from "./BusinessHoliday";
 import AdminanalyticsReport from "./Analytics/Adminanalyticsreport";
+import OverviewAnalyticsDashboard from "./Analytics/OverviewAnalyticsDashboard";
 const API_BASE = import.meta.env.VITE_BASE;
 
 export default function BusinessDashboardLayout() {
@@ -61,6 +62,7 @@ export default function BusinessDashboardLayout() {
             <Route path="business-user-projects/:id" element={<BusinessUserProjects />} />
              <Route path="business-holidays" element={<BusinessHolidays />} />
              <Route path="analytics-report" element={<AdminanalyticsReport />} />
+             <Route path="demo-overview-analytics" element={<OverviewAnalyticsDashboard />} />
 
 
           </Routes>

@@ -14,6 +14,7 @@ import {
 
 // ✅ Menus without leading slashes
 const BUSINESS_MENU = [
+  { name: "demo-overview-analytics", icon: HomeIcon, path: "demo-overview-analytics" },
   { name: "Dashboard", icon: HomeIcon, path: "main-dashboard" },
   { name: "Analytics Report", icon: ChartBarIcon, path: "analytics-report" },
   { name: "Clients", icon: UsersIcon, path: "clients" },
