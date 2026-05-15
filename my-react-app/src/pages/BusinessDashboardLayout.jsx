@@ -13,6 +13,7 @@ import BusinessUserProjects from "./BusinessUserProjects";
 import BusinessHolidays from "./BusinessHoliday";
 import AdminanalyticsReport from "./Analytics/Adminanalyticsreport";
 import OverviewAnalyticsDashboard from "./Analytics/OverviewAnalyticsDashboard";
+import AdminTaskSchedule from "./AdminTaskSchedule";
 const API_BASE = import.meta.env.VITE_BASE;
 
 export default function BusinessDashboardLayout() {
@@ -63,8 +64,7 @@ export default function BusinessDashboardLayout() {
              <Route path="business-holidays" element={<BusinessHolidays />} />
              <Route path="analytics-report" element={<AdminanalyticsReport />} />
              <Route path="demo-overview-analytics" element={<OverviewAnalyticsDashboard />} />
-
-
+             <Route path="admin-task-schedule" element={<AdminTaskSchedule />} />
           </Routes>
         </div>
       </div>

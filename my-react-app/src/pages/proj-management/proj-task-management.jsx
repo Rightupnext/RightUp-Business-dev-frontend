@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { AuthContext } from "../../context/AuthContext";
 import { ReminderContext } from "../../context/ReminderContext";
 import Button from "../../components/Button";
-import { TrashIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { TrashIcon, PlusIcon, XMarkIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { FaUpload } from "react-icons/fa6";
 import {
   calculateLiveWorkingHours,
@@ -41,7 +41,337 @@ const COLOR_MAP = {
   violet:  { active: "bg-violet-500 hover:bg-violet-600 text-white border-violet-500",   done: "bg-violet-50 text-violet-700 border-violet-200"   },
   rose:    { active: "bg-rose-500 hover:bg-rose-600 text-white border-rose-500",          done: "bg-rose-50 text-rose-700 border-rose-200"          },
 };
-
+const PRIORITY_COLORS = {
+  low:    "bg-slate-100 text-slate-600 border-slate-200",
+  medium: "bg-amber-50 text-amber-700 border-amber-200",
+  high:   "bg-red-50 text-red-700 border-red-200",
+};
+ 
+const STATUS_COLORS = {
+  pending:    "bg-slate-100 text-slate-600",
+  inprogress: "bg-sky-100 text-sky-700",
+  completed:  "bg-emerald-100 text-emerald-700",
+};
+// ─── Schedule Modal ───────────────────────────────────────────────────────────
+function ScheduleModal({ token, onClose, onCountChange }) {
+  const headers = { headers: { Authorization: `Bearer ${token}` } };
+ 
+  const emptyForm = {
+    title: "",
+    description: "",
+    scheduleDate: new Date().toISOString().split("T")[0],
+    startTime: "",
+    endTime: "",
+    priority: "medium",
+    status: "pending",
+  };
+ 
+  const [schedules,   setSchedules]   = useState([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [form,        setForm]        = useState(emptyForm);
+  const [editingId,   setEditingId]   = useState(null);
+  const [saving,      setSaving]      = useState(false);
+  const [view,        setView]        = useState("list");
+ 
+  useEffect(() => { fetchSchedules(); }, []);
+ 
+  const fetchSchedules = async () => {
+    setLoadingList(true);
+    try {
+      const res = await axios.get(`${API_BASE}/schedules`, headers);
+      setSchedules(res.data?.schedules || []);
+    } catch {
+      toast.error("Failed to load schedules");
+    } finally {
+      setLoadingList(false);
+    }
+  };
+ 
+  const syncBadge = (list) => {
+    onCountChange?.(list.filter((s) => s.status !== "completed").length);
+  };
+ 
+  const handleSave = async () => {
+    if (!form.title.trim()) return toast.error("Title is required");
+    setSaving(true);
+    try {
+      let updated;
+      if (editingId) {
+        const res = await axios.patch(`${API_BASE}/schedules/${editingId}`, form, headers);
+        updated = schedules.map((s) => (s._id === editingId ? res.data.schedule : s));
+        toast.success("Schedule updated");
+      } else {
+        const res = await axios.post(`${API_BASE}/schedules`, form, headers);
+        updated = [res.data.schedule, ...schedules];
+        toast.success("Schedule created");
+      }
+      setSchedules(updated);
+      syncBadge(updated);
+      setForm(emptyForm);
+      setEditingId(null);
+      setView("list");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+ 
+  const handleEdit = (schedule) => {
+    setForm({
+      title:        schedule.title,
+      description:  schedule.description  || "",
+      scheduleDate: schedule.scheduleDate,
+      startTime:    schedule.startTime    || "",
+      endTime:      schedule.endTime      || "",
+      priority:     schedule.priority     || "medium",
+      status:       schedule.status       || "pending",
+    });
+    setEditingId(schedule._id);
+    setView("form");
+  };
+ 
+  const handleDelete = async (id) => {
+    if (!confirm("Delete this schedule?")) return;
+    try {
+      await axios.delete(`${API_BASE}/schedules/${id}`, headers);
+      const updated = schedules.filter((s) => s._id !== id);
+      setSchedules(updated);
+      syncBadge(updated);
+      toast.success("Schedule deleted");
+    } catch {
+      toast.error("Delete failed");
+    }
+  };
+ 
+  const handleStatusToggle = async (schedule) => {
+    const nextStatus =
+      schedule.status === "pending"    ? "inprogress" :
+      schedule.status === "inprogress" ? "completed"  : "pending";
+    try {
+      const res = await axios.patch(
+        `${API_BASE}/schedules/${schedule._id}`,
+        { status: nextStatus },
+        headers
+      );
+      const updated = schedules.map((s) => (s._id === schedule._id ? res.data.schedule : s));
+      setSchedules(updated);
+      syncBadge(updated);
+    } catch {
+      toast.error("Status update failed");
+    }
+  };
+ 
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            {view === "form" && (
+              <button
+                onClick={() => { setView("list"); setForm(emptyForm); setEditingId(null); }}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition"
+              >←</button>
+            )}
+            <div>
+              <h2 className="text-base font-bold text-slate-800">
+                {view === "form" ? (editingId ? "Edit Schedule" : "New Schedule") : "Schedules"}
+              </h2>
+              <p className="text-xs text-slate-400">All schedules</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {view === "list" && (
+              <button
+                onClick={() => { setForm(emptyForm); setEditingId(null); setView("form"); }}
+                className="flex items-center gap-1.5 bg-lime-600 hover:bg-lime-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all active:scale-95"
+              >
+                <PlusIcon className="w-3.5 h-3.5" /> Add
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+ 
+        {/* Body */}
+        <div className="max-h-[70vh] overflow-y-auto">
+ 
+          {/* LIST */}
+          {view === "list" && (
+            <div className="p-4 space-y-3">
+              {loadingList ? (
+                <div className="flex justify-center py-10">
+                  <div className="w-8 h-8 border-4 border-slate-200 border-t-lime-500 rounded-full animate-spin" />
+                </div>
+              ) : schedules.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <p className="text-sm">No schedules yet</p>
+                  <p className="text-xs mt-1">Click "Add" to create one</p>
+                </div>
+              ) : (
+                schedules.map((s) => (
+                  <div
+                    key={s._id}
+                    className={`border rounded-xl p-3 hover:shadow-sm transition-shadow ${
+                      s.status === "completed"
+                        ? "border-emerald-100 bg-emerald-50/40 opacity-70"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className={`text-sm font-semibold truncate ${s.status === "completed" ? "line-through text-slate-400" : "text-slate-800"}`}>
+                            {s.title}
+                          </p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PRIORITY_COLORS[s.priority]}`}>
+                            {s.priority}
+                          </span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                            📅 {s.scheduleDate}
+                          </span>
+                        </div>
+                        {s.description && (
+                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{s.description}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          {(s.startTime || s.endTime) && (
+                            <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                              🕐 {s.startTime}{s.endTime ? ` – ${s.endTime}` : ""}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleStatusToggle(s)}
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full cursor-pointer transition-all ${STATUS_COLORS[s.status]}`}
+                          >
+                            {s.status}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleEdit(s)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-sky-50 text-slate-400 hover:text-sky-600 transition"
+                        >
+                          <PencilIcon className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(s._id)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition"
+                        >
+                          <TrashIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+ 
+          {/* FORM */}
+          {view === "form" && (
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Title <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="Schedule title…"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100"
+                />
+              </div>
+ 
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="Details…"
+                  rows={3}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100"
+                />
+              </div>
+ 
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Date</label>
+                  <input type="date" value={form.scheduleDate}
+                    onChange={(e) => setForm((f) => ({ ...f, scheduleDate: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Start</label>
+                  <input type="time" value={form.startTime}
+                    onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">End</label>
+                  <input type="time" value={form.endTime}
+                    onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100"
+                  />
+                </div>
+              </div>
+ 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Priority</label>
+                  <select value={form.priority}
+                    onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100 bg-white"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
+                  <select value={form.status}
+                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100 bg-white"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="inprogress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+ 
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-lime-300 text-white font-semibold py-2.5 rounded-xl text-sm transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                {saving && <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+                {editingId ? "Update Schedule" : "Save Schedule"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function ProjTaskManagement() {
   const { token, user } = useContext(AuthContext);
   const { fetchTodayGroup } = useContext(ReminderContext);
@@ -51,7 +381,9 @@ export default function ProjTaskManagement() {
   const [liveTime, setLiveTime] = useState(Date.now());
   const headers = { headers: { Authorization: `Bearer ${token}` } };
   const [projects, setProjects] = useState([]);
-
+  // Global schedule modal
+  const [showCommonSchedule, setShowCommonSchedule] = useState(false);
+  const [globalScheduleCount, setGlobalScheduleCount] = useState(0);
   const fetchProjects = async () => {
     try {
       const res = await axios.get(`${API_BASE}/projects/user/${user?._id}`, {
@@ -66,7 +398,16 @@ export default function ProjTaskManagement() {
 
   useEffect(() => { if (user?._id) fetchProjects(); }, [user?._id]);
   useEffect(() => { fetchGroups(); }, [filterDate]);
-
+   useEffect(() => {
+    if (user?.dashboardType === "project") fetchGlobalScheduleCount();
+  }, [user?.dashboardType]);
+  const fetchGlobalScheduleCount = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/schedules`, { headers: { Authorization: `Bearer ${token}` } });
+      const all = res.data?.schedules || [];
+      setGlobalScheduleCount(all.filter((s) => s.status !== "completed").length);
+    } catch {}
+  };
   useEffect(() => {
     const timer = setInterval(() => {
       const hasActiveGroup = groups.some((g) => g.timeIn && !g.timeOut);
@@ -243,7 +584,25 @@ export default function ProjTaskManagement() {
                 >×</button>
               )}
             </div>
-
+              {/* ✅ FIXED: Removed the orphaned "Add Schedule" button that was here.
+                The schedule button correctly lives inside each GroupCard below. */}
+ 
+            {user?.dashboardType === "project" && (
+              <button
+                onClick={() => setShowCommonSchedule(true)}
+                className="relative flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-sm transition-all active:scale-95"
+              >
+                <PlusIcon className="w-4 h-4" /> Schedule
+                {globalScheduleCount > 0 && (
+                  <>
+                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-400 animate-ping opacity-75" />
+                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold text-white leading-none">
+                      {globalScheduleCount > 9 ? "9+" : globalScheduleCount}
+                    </span>
+                  </>
+                )}
+              </button>
+            )}
             {/* New Group */}
             <button
               onClick={createGroup}
@@ -296,6 +655,14 @@ export default function ProjTaskManagement() {
           ))}
         </div>
       </div>
+      {/* ── Global Schedule Modal ── */}
+      {showCommonSchedule && (
+        <ScheduleModal
+          token={token}
+          onCountChange={setGlobalScheduleCount}
+          onClose={() => { setShowCommonSchedule(false); fetchGlobalScheduleCount(); }}
+        />
+      )}
     </div>
   );
 }
