@@ -26,6 +26,7 @@
     "react-push-notification": "^1.5.4",
     "react-router-dom": "^7.9.4",
     "recharts": "^3.8.1",
+    "socket.io-client": "^4.8.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

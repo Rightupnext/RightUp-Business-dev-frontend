@@ -4,14 +4,20 @@ import toast from "react-hot-toast";
 import { AuthContext } from "../../context/AuthContext";
 import { ReminderContext } from "../../context/ReminderContext";
 import Button from "../../components/Button";
-import { TrashIcon, PlusIcon, XMarkIcon, PencilIcon } from "@heroicons/react/24/outline";
+import {
+  TrashIcon,
+  PlusIcon,
+  XMarkIcon,
+  PencilIcon,
+} from "@heroicons/react/24/outline";
 import { FaUpload } from "react-icons/fa6";
 import {
   calculateLiveWorkingHours,
   formatToISTTime,
   formatToISTDate as formatToIST,
 } from "../../utils/timeUtils";
-
+import useScheduleSocket from "../../hooks/useScheduleSocket";
+import socket from "../../socket/socket";
 const API_BASE = import.meta.env.VITE_BASE;
 
 function debounce(fn, wait) {
@@ -24,38 +30,53 @@ function debounce(fn, wait) {
 
 // ─── Time button meta ────────────────────────────────────────────────────────
 const TIME_BUTTONS = [
-  { key: "timeIn",        label: "Time In",      color: "emerald" },
-  { key: "MGBreakIn",     label: "MG In",        color: "sky"     },
-  { key: "MGBreakOut",    label: "MG Out",       color: "sky"     },
-  { key: "LunchbreakIn",  label: "Lunch In",     color: "amber"   },
-  { key: "LunchbreakOut", label: "Lunch Out",    color: "amber"   },
-  { key: "EveBreakIn",    label: "Eve In",       color: "violet"  },
-  { key: "EveBreakOut",   label: "Eve Out",      color: "violet"  },
-  { key: "timeOut",       label: "Time Out",     color: "rose"    },
+  { key: "timeIn", label: "Time In", color: "emerald" },
+  { key: "MGBreakIn", label: "MG In", color: "sky" },
+  { key: "MGBreakOut", label: "MG Out", color: "sky" },
+  { key: "LunchbreakIn", label: "Lunch In", color: "amber" },
+  { key: "LunchbreakOut", label: "Lunch Out", color: "amber" },
+  { key: "EveBreakIn", label: "Eve In", color: "violet" },
+  { key: "EveBreakOut", label: "Eve Out", color: "violet" },
+  { key: "timeOut", label: "Time Out", color: "rose" },
 ];
 
 const COLOR_MAP = {
-  emerald: { active: "bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500", done: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  sky:     { active: "bg-sky-500 hover:bg-sky-600 text-white border-sky-500",             done: "bg-sky-50 text-sky-700 border-sky-200"             },
-  amber:   { active: "bg-amber-500 hover:bg-amber-600 text-white border-amber-500",       done: "bg-amber-50 text-amber-700 border-amber-200"       },
-  violet:  { active: "bg-violet-500 hover:bg-violet-600 text-white border-violet-500",   done: "bg-violet-50 text-violet-700 border-violet-200"   },
-  rose:    { active: "bg-rose-500 hover:bg-rose-600 text-white border-rose-500",          done: "bg-rose-50 text-rose-700 border-rose-200"          },
+  emerald: {
+    active: "bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500",
+    done: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  sky: {
+    active: "bg-sky-500 hover:bg-sky-600 text-white border-sky-500",
+    done: "bg-sky-50 text-sky-700 border-sky-200",
+  },
+  amber: {
+    active: "bg-amber-500 hover:bg-amber-600 text-white border-amber-500",
+    done: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  violet: {
+    active: "bg-violet-500 hover:bg-violet-600 text-white border-violet-500",
+    done: "bg-violet-50 text-violet-700 border-violet-200",
+  },
+  rose: {
+    active: "bg-rose-500 hover:bg-rose-600 text-white border-rose-500",
+    done: "bg-rose-50 text-rose-700 border-rose-200",
+  },
 };
 const PRIORITY_COLORS = {
-  low:    "bg-slate-100 text-slate-600 border-slate-200",
+  low: "bg-slate-100 text-slate-600 border-slate-200",
   medium: "bg-amber-50 text-amber-700 border-amber-200",
-  high:   "bg-red-50 text-red-700 border-red-200",
+  high: "bg-red-50 text-red-700 border-red-200",
 };
- 
+
 const STATUS_COLORS = {
-  pending:    "bg-slate-100 text-slate-600",
+  pending: "bg-slate-100 text-slate-600",
   inprogress: "bg-sky-100 text-sky-700",
-  completed:  "bg-emerald-100 text-emerald-700",
+  completed: "bg-emerald-100 text-emerald-700",
 };
 // ─── Schedule Modal ───────────────────────────────────────────────────────────
-function ScheduleModal({ token, onClose, onCountChange }) {
+function ScheduleModal({ token, onClose, onCountChange, user }) {
   const headers = { headers: { Authorization: `Bearer ${token}` } };
- 
+
   const emptyForm = {
     title: "",
     description: "",
@@ -65,16 +86,20 @@ function ScheduleModal({ token, onClose, onCountChange }) {
     priority: "medium",
     status: "pending",
   };
- 
-  const [schedules,   setSchedules]   = useState([]);
+
+  const [schedules, setSchedules] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
-  const [form,        setForm]        = useState(emptyForm);
-  const [editingId,   setEditingId]   = useState(null);
-  const [saving,      setSaving]      = useState(false);
-  const [view,        setView]        = useState("list");
- 
-  useEffect(() => { fetchSchedules(); }, []);
- 
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [view, setView] = useState("list");
+
+  useEffect(() => {
+    fetchSchedules();
+  }, []);
+  useScheduleSocket(user?._id, () => {
+    fetchSchedules();
+  });
   const fetchSchedules = async () => {
     setLoadingList(true);
     try {
@@ -86,19 +111,25 @@ function ScheduleModal({ token, onClose, onCountChange }) {
       setLoadingList(false);
     }
   };
- 
+
   const syncBadge = (list) => {
     onCountChange?.(list.filter((s) => s.status !== "completed").length);
   };
- 
+
   const handleSave = async () => {
     if (!form.title.trim()) return toast.error("Title is required");
     setSaving(true);
     try {
       let updated;
       if (editingId) {
-        const res = await axios.patch(`${API_BASE}/schedules/${editingId}`, form, headers);
-        updated = schedules.map((s) => (s._id === editingId ? res.data.schedule : s));
+        const res = await axios.patch(
+          `${API_BASE}/schedules/${editingId}`,
+          form,
+          headers,
+        );
+        updated = schedules.map((s) =>
+          s._id === editingId ? res.data.schedule : s,
+        );
         toast.success("Schedule updated");
       } else {
         const res = await axios.post(`${API_BASE}/schedules`, form, headers);
@@ -116,21 +147,21 @@ function ScheduleModal({ token, onClose, onCountChange }) {
       setSaving(false);
     }
   };
- 
+
   const handleEdit = (schedule) => {
     setForm({
-      title:        schedule.title,
-      description:  schedule.description  || "",
+      title: schedule.title,
+      description: schedule.description || "",
       scheduleDate: schedule.scheduleDate,
-      startTime:    schedule.startTime    || "",
-      endTime:      schedule.endTime      || "",
-      priority:     schedule.priority     || "medium",
-      status:       schedule.status       || "pending",
+      startTime: schedule.startTime || "",
+      endTime: schedule.endTime || "",
+      priority: schedule.priority || "medium",
+      status: schedule.status || "pending",
     });
     setEditingId(schedule._id);
     setView("form");
   };
- 
+
   const handleDelete = async (id) => {
     if (!confirm("Delete this schedule?")) return;
     try {
@@ -143,25 +174,30 @@ function ScheduleModal({ token, onClose, onCountChange }) {
       toast.error("Delete failed");
     }
   };
- 
+
   const handleStatusToggle = async (schedule) => {
     const nextStatus =
-      schedule.status === "pending"    ? "inprogress" :
-      schedule.status === "inprogress" ? "completed"  : "pending";
+      schedule.status === "pending"
+        ? "inprogress"
+        : schedule.status === "inprogress"
+          ? "completed"
+          : "pending";
     try {
       const res = await axios.patch(
         `${API_BASE}/schedules/${schedule._id}`,
         { status: nextStatus },
-        headers
+        headers,
       );
-      const updated = schedules.map((s) => (s._id === schedule._id ? res.data.schedule : s));
+      const updated = schedules.map((s) =>
+        s._id === schedule._id ? res.data.schedule : s,
+      );
       setSchedules(updated);
       syncBadge(updated);
     } catch {
       toast.error("Status update failed");
     }
   };
- 
+
   return (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
@@ -176,13 +212,23 @@ function ScheduleModal({ token, onClose, onCountChange }) {
           <div className="flex items-center gap-3">
             {view === "form" && (
               <button
-                onClick={() => { setView("list"); setForm(emptyForm); setEditingId(null); }}
+                onClick={() => {
+                  setView("list");
+                  setForm(emptyForm);
+                  setEditingId(null);
+                }}
                 className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition"
-              >←</button>
+              >
+                ←
+              </button>
             )}
             <div>
               <h2 className="text-base font-bold text-slate-800">
-                {view === "form" ? (editingId ? "Edit Schedule" : "New Schedule") : "Schedules"}
+                {view === "form"
+                  ? editingId
+                    ? "Edit Schedule"
+                    : "New Schedule"
+                  : "Schedules"}
               </h2>
               <p className="text-xs text-slate-400">All schedules</p>
             </div>
@@ -190,7 +236,11 @@ function ScheduleModal({ token, onClose, onCountChange }) {
           <div className="flex items-center gap-2">
             {view === "list" && (
               <button
-                onClick={() => { setForm(emptyForm); setEditingId(null); setView("form"); }}
+                onClick={() => {
+                  setForm(emptyForm);
+                  setEditingId(null);
+                  setView("form");
+                }}
                 className="flex items-center gap-1.5 bg-lime-600 hover:bg-lime-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all active:scale-95"
               >
                 <PlusIcon className="w-3.5 h-3.5" /> Add
@@ -204,10 +254,9 @@ function ScheduleModal({ token, onClose, onCountChange }) {
             </button>
           </div>
         </div>
- 
+
         {/* Body */}
         <div className="max-h-[70vh] overflow-y-auto">
- 
           {/* LIST */}
           {view === "list" && (
             <div className="p-4 space-y-3">
@@ -233,10 +282,14 @@ function ScheduleModal({ token, onClose, onCountChange }) {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className={`text-sm font-semibold truncate ${s.status === "completed" ? "line-through text-slate-400" : "text-slate-800"}`}>
+                          <p
+                            className={`text-sm font-semibold truncate ${s.status === "completed" ? "line-through text-slate-400" : "text-slate-800"}`}
+                          >
                             {s.title}
                           </p>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PRIORITY_COLORS[s.priority]}`}>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PRIORITY_COLORS[s.priority]}`}
+                          >
                             {s.priority}
                           </span>
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
@@ -244,12 +297,15 @@ function ScheduleModal({ token, onClose, onCountChange }) {
                           </span>
                         </div>
                         {s.description && (
-                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{s.description}</p>
+                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                            {s.description}
+                          </p>
                         )}
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           {(s.startTime || s.endTime) && (
                             <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                              🕐 {s.startTime}{s.endTime ? ` – ${s.endTime}` : ""}
+                              🕐 {s.startTime}
+                              {s.endTime ? ` – ${s.endTime}` : ""}
                             </span>
                           )}
                           <button
@@ -280,7 +336,7 @@ function ScheduleModal({ token, onClose, onCountChange }) {
               )}
             </div>
           )}
- 
+
           {/* FORM */}
           {view === "form" && (
             <div className="p-5 space-y-4">
@@ -291,52 +347,81 @@ function ScheduleModal({ token, onClose, onCountChange }) {
                 <input
                   type="text"
                   value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, title: e.target.value }))
+                  }
                   placeholder="Schedule title…"
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100"
                 />
               </div>
- 
+
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Description</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Description
+                </label>
                 <textarea
                   value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, description: e.target.value }))
+                  }
                   placeholder="Details…"
                   rows={3}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100"
                 />
               </div>
- 
+
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Date</label>
-                  <input type="date" value={form.scheduleDate}
-                    onChange={(e) => setForm((f) => ({ ...f, scheduleDate: e.target.value }))}
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={form.scheduleDate}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, scheduleDate: e.target.value }))
+                    }
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Start</label>
-                  <input type="time" value={form.startTime}
-                    onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Start
+                  </label>
+                  <input
+                    type="time"
+                    value={form.startTime}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, startTime: e.target.value }))
+                    }
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">End</label>
-                  <input type="time" value={form.endTime}
-                    onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    End
+                  </label>
+                  <input
+                    type="time"
+                    value={form.endTime}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, endTime: e.target.value }))
+                    }
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100"
                   />
                 </div>
               </div>
- 
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Priority</label>
-                  <select value={form.priority}
-                    onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Priority
+                  </label>
+                  <select
+                    value={form.priority}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, priority: e.target.value }))
+                    }
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100 bg-white"
                   >
                     <option value="low">Low</option>
@@ -345,9 +430,14 @@ function ScheduleModal({ token, onClose, onCountChange }) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
-                  <select value={form.status}
-                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={form.status}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, status: e.target.value }))
+                    }
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-100 bg-white"
                   >
                     <option value="pending">Pending</option>
@@ -356,13 +446,15 @@ function ScheduleModal({ token, onClose, onCountChange }) {
                   </select>
                 </div>
               </div>
- 
+
               <button
                 onClick={handleSave}
                 disabled={saving}
                 className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-lime-300 text-white font-semibold py-2.5 rounded-xl text-sm transition-all active:scale-95 flex items-center justify-center gap-2"
               >
-                {saving && <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+                {saving && (
+                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                )}
                 {editingId ? "Update Schedule" : "Save Schedule"}
               </button>
             </div>
@@ -381,9 +473,10 @@ export default function ProjTaskManagement() {
   const [liveTime, setLiveTime] = useState(Date.now());
   const headers = { headers: { Authorization: `Bearer ${token}` } };
   const [projects, setProjects] = useState([]);
+
   // Global schedule modal
   const [showCommonSchedule, setShowCommonSchedule] = useState(false);
-  const [globalScheduleCount, setGlobalScheduleCount] = useState(0);
+
   const fetchProjects = async () => {
     try {
       const res = await axios.get(`${API_BASE}/projects/user/${user?._id}`, {
@@ -395,17 +488,63 @@ export default function ProjTaskManagement() {
       toast.error("Failed to load projects");
     }
   };
+  const [scheduleCount, setScheduleCount] = useState(0);
+  const [globalScheduleCount, setGlobalScheduleCount] = useState(0);
 
-  useEffect(() => { if (user?._id) fetchProjects(); }, [user?._id]);
-  useEffect(() => { fetchGroups(); }, [filterDate]);
-   useEffect(() => {
+  useEffect(() => {
+    if (!user?._id) return;
+
+    socket.emit("join", user._id);
+
+    // CREATE
+    socket.on("scheduleCreated", () => {
+      setScheduleCount((prev) => prev + 1);
+
+      setGlobalScheduleCount((prev) => prev + 1);
+    });
+
+    // DELETE
+    socket.on("scheduleDeleted", () => {
+      setScheduleCount((prev) => (prev > 0 ? prev - 1 : 0));
+
+      setGlobalScheduleCount((prev) => (prev > 0 ? prev - 1 : 0));
+    });
+
+    // UPDATE STATUS
+    socket.on("scheduleUpdated", (schedule) => {
+      // completed -> reduce
+      if (schedule.status === "completed") {
+        setGlobalScheduleCount((prev) => (prev > 0 ? prev - 1 : 0));
+      } else {
+        // pending/inprogress
+        setGlobalScheduleCount((prev) => prev + 1);
+      }
+    });
+
+    return () => {
+      socket.off("scheduleCreated");
+      socket.off("scheduleDeleted");
+      socket.off("scheduleUpdated");
+    };
+  }, [user]);
+  useEffect(() => {
+    if (user?._id) fetchProjects();
+  }, [user?._id]);
+  useEffect(() => {
+    fetchGroups();
+  }, [filterDate]);
+  useEffect(() => {
     if (user?.dashboardType === "project") fetchGlobalScheduleCount();
   }, [user?.dashboardType]);
   const fetchGlobalScheduleCount = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/schedules`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`${API_BASE}/schedules`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const all = res.data?.schedules || [];
-      setGlobalScheduleCount(all.filter((s) => s.status !== "completed").length);
+      setGlobalScheduleCount(
+        all.filter((s) => s.status !== "completed").length,
+      );
     } catch {}
   };
   useEffect(() => {
@@ -433,12 +572,31 @@ export default function ProjTaskManagement() {
 
   const createGroup = async () => {
     try {
-      const payload = filterDate ? { date: filterDate } : {};
-      const res = await axios.post(`${API_BASE}/tasks/groups`, payload, headers);
+      // selected date OR today
+      const selectedDate = filterDate || new Date().toISOString().split("T")[0];
+
+      // check existing group
+      const alreadyExists = groups.some(
+        (g) => g.date?.split("T")[0] === selectedDate,
+      );
+
+      if (alreadyExists) {
+        return toast.error("Group already exists for this date");
+      }
+
+      const payload = { date: selectedDate };
+
+      const res = await axios.post(
+        `${API_BASE}/tasks/groups`,
+        payload,
+        headers,
+      );
+
       setGroups((prev) => [res.data, ...prev]);
+
       toast.success("New group created!");
-    } catch {
-      toast.error("Failed to create group");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create group");
     }
   };
 
@@ -464,21 +622,34 @@ export default function ProjTaskManagement() {
 
       if (activeTask) {
         toast.custom((t) => (
-          <div className={`${t.visible ? "animate-enter" : "animate-leave"} max-w-md w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex overflow-hidden border border-orange-100`}>
+          <div
+            className={`${t.visible ? "animate-enter" : "animate-leave"} max-w-md w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex overflow-hidden border border-orange-100`}
+          >
             <div className="flex-1 p-4">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 w-11 h-11 rounded-full bg-orange-100 flex items-center justify-center">
                   <span className="text-xl">⏱️</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">Active Task Running</p>
-                  <p className="mt-1 text-sm text-gray-500 leading-relaxed">Please end your current task before creating a new one.</p>
-                  <div className="mt-3 inline-flex items-center gap-2 bg-orange-50 text-orange-700 px-3 py-1 rounded-full text-xs font-medium">End previous task first</div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    Active Task Running
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500 leading-relaxed">
+                    Please end your current task before creating a new one.
+                  </p>
+                  <div className="mt-3 inline-flex items-center gap-2 bg-orange-50 text-orange-700 px-3 py-1 rounded-full text-xs font-medium">
+                    End previous task first
+                  </div>
                 </div>
               </div>
             </div>
             <div className="flex border-l border-gray-100">
-              <button onClick={() => toast.dismiss(t.id)} className="px-4 text-sm font-medium text-orange-600 hover:bg-orange-50 transition">Close</button>
+              <button
+                onClick={() => toast.dismiss(t.id)}
+                className="px-4 text-sm font-medium text-orange-600 hover:bg-orange-50 transition"
+              >
+                Close
+              </button>
             </div>
           </div>
         ));
@@ -486,8 +657,20 @@ export default function ProjTaskManagement() {
       }
 
       const now = new Date().toISOString();
-      const payload = { timing: now, endTiming: null, projname: "", projectId: null, name: "", issue: "", status: "" };
-      const res = await axios.post(`${API_BASE}/tasks/groups/${groupId}/tasks`, payload, headers);
+      const payload = {
+        timing: now,
+        endTiming: null,
+        projname: "",
+        projectId: null,
+        name: "",
+        issue: "",
+        status: "",
+      };
+      const res = await axios.post(
+        `${API_BASE}/tasks/groups/${groupId}/tasks`,
+        payload,
+        headers,
+      );
       setGroups((prev) => prev.map((g) => (g._id === groupId ? res.data : g)));
       toast.success("New task created");
     } catch (err) {
@@ -510,7 +693,10 @@ export default function ProjTaskManagement() {
   const deleteTask = async (groupId, taskId) => {
     if (!confirm("Delete this task?")) return;
     try {
-      const res = await axios.delete(`${API_BASE}/tasks/groups/${groupId}/tasks/${taskId}`, headers);
+      const res = await axios.delete(
+        `${API_BASE}/tasks/groups/${groupId}/tasks/${taskId}`,
+        headers,
+      );
       setGroups((prev) => prev.map((g) => (g._id === groupId ? res.data : g)));
       toast.success("Task deleted");
     } catch {
@@ -520,7 +706,11 @@ export default function ProjTaskManagement() {
 
   const saveTaskServer = async (groupId, taskId, patch) => {
     try {
-      const res = await axios.patch(`${API_BASE}/tasks/groups/${groupId}/tasks/${taskId}`, patch, headers);
+      const res = await axios.patch(
+        `${API_BASE}/tasks/groups/${groupId}/tasks/${taskId}`,
+        patch,
+        headers,
+      );
       setGroups((prev) => prev.map((g) => (g._id === groupId ? res.data : g)));
     } catch {
       toast.error("Auto-save failed");
@@ -537,7 +727,12 @@ export default function ProjTaskManagement() {
               ...g,
               tasks: g.tasks.map((t) =>
                 t._id === taskId
-                  ? { ...t, ...patch, projectId: patch.projectId ?? t.projectId, projname: patch.projname ?? t.projname }
+                  ? {
+                      ...t,
+                      ...patch,
+                      projectId: patch.projectId ?? t.projectId,
+                      projname: patch.projname ?? t.projname,
+                    }
                   : t,
               ),
             }
@@ -550,26 +745,49 @@ export default function ProjTaskManagement() {
   return (
     <div className="min-h-screen bg-slate-50 pt-20 pb-12">
       <div className="max-w-screen-xl mx-auto px-4 lg:px-6">
-
         {/* ── Header Bar ─────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-sky-600 flex items-center justify-center shadow">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-800 leading-tight">Task Management</h1>
-              <p className="text-xs text-slate-500">{groups.length} group{groups.length !== 1 ? "s" : ""} found</p>
+              <h1 className="text-xl font-bold text-slate-800 leading-tight">
+                Task Management
+              </h1>
+              <p className="text-xs text-slate-500">
+                {groups.length} group{groups.length !== 1 ? "s" : ""} found
+              </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {/* Date filter */}
             <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              <svg
+                className="w-4 h-4 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
               </svg>
               <input
                 type="date"
@@ -579,14 +797,19 @@ export default function ProjTaskManagement() {
               />
               {filterDate && (
                 <button
-                  onClick={() => { setFilterDate(""); fetchGroups(); }}
+                  onClick={() => {
+                    setFilterDate("");
+                    fetchGroups();
+                  }}
                   className="ml-1 w-4 h-4 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center hover:bg-slate-300 transition text-xs font-bold"
-                >×</button>
+                >
+                  ×
+                </button>
               )}
             </div>
-              {/* ✅ FIXED: Removed the orphaned "Add Schedule" button that was here.
+            {/* ✅ FIXED: Removed the orphaned "Add Schedule" button that was here.
                 The schedule button correctly lives inside each GroupCard below. */}
- 
+
             {user?.dashboardType === "project" && (
               <button
                 onClick={() => setShowCommonSchedule(true)}
@@ -628,12 +851,24 @@ export default function ProjTaskManagement() {
         {!loading && groups.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              <svg
+                className="w-8 h-8 text-slate-300"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
               </svg>
             </div>
             <p className="text-slate-500 font-medium">No groups yet</p>
-            <p className="text-slate-400 text-sm mt-1">Create a new group to get started</p>
+            <p className="text-slate-400 text-sm mt-1">
+              Create a new group to get started
+            </p>
           </div>
         )}
 
@@ -658,9 +893,13 @@ export default function ProjTaskManagement() {
       {/* ── Global Schedule Modal ── */}
       {showCommonSchedule && (
         <ScheduleModal
+          user={user}
           token={token}
           onCountChange={setGlobalScheduleCount}
-          onClose={() => { setShowCommonSchedule(false); fetchGlobalScheduleCount(); }}
+          onClose={() => {
+            setShowCommonSchedule(false);
+            fetchGlobalScheduleCount();
+          }}
         />
       )}
     </div>
@@ -668,14 +907,25 @@ export default function ProjTaskManagement() {
 }
 
 // ─── GroupCard ───────────────────────────────────────────────────────────────
-function GroupCard({ group, projects, token, onSetTime, onDeleteGroup, onAddTask, onDeleteTask, onUpdateTask, idx }) {
+function GroupCard({
+  group,
+  projects,
+  token,
+  onSetTime,
+  onDeleteGroup,
+  onAddTask,
+  onDeleteTask,
+  onUpdateTask,
+  idx,
+}) {
   const isActive = group.timeIn && !group.timeOut;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-
       {/* Card top accent */}
-      <div className={`h-1 w-full ${isActive ? "bg-gradient-to-r from-emerald-400 via-sky-400 to-violet-400" : "bg-slate-100"}`} />
+      <div
+        className={`h-1 w-full ${isActive ? "bg-gradient-to-r from-emerald-400 via-sky-400 to-violet-400" : "bg-slate-100"}`}
+      />
 
       <div className="p-5">
         {/* ── Group Header ──────────────────────────────────────────── */}
@@ -683,13 +933,27 @@ function GroupCard({ group, projects, token, onSetTime, onDeleteGroup, onAddTask
           {/* Left: date + badge */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
               </svg>
             </div>
             <div>
-              <p className="text-xs text-slate-400 uppercase tracking-widest font-medium">Date</p>
-              <p className="text-sm font-bold text-slate-800">{formatToIST(group.date)}</p>
+              <p className="text-xs text-slate-400 uppercase tracking-widest font-medium">
+                Date
+              </p>
+              <p className="text-sm font-bold text-slate-800">
+                {formatToIST(group.date)}
+              </p>
             </div>
             {isActive && (
               <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-xs font-semibold">
@@ -701,15 +965,28 @@ function GroupCard({ group, projects, token, onSetTime, onDeleteGroup, onAddTask
 
           {/* Right: working hours + delete */}
           <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border ${
-              isActive
-                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                : group.timeIn
-                  ? "bg-slate-50 text-slate-700 border-slate-200"
-                  : "bg-slate-50 text-slate-400 border-slate-200"
-            }`}>
-              <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2"/>
+            <div
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border ${
+                isActive
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                  : group.timeIn
+                    ? "bg-slate-50 text-slate-700 border-slate-200"
+                    : "bg-slate-50 text-slate-400 border-slate-200"
+              }`}
+            >
+              <svg
+                className="w-4 h-4 opacity-70"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 6v6l4 2"
+                />
               </svg>
               {group.timeIn ? calculateLiveWorkingHours(group) : "0h 0m"}
             </div>
@@ -742,7 +1019,8 @@ function GroupCard({ group, projects, token, onSetTime, onDeleteGroup, onAddTask
                     : c.active + " shadow-sm cursor-pointer"
                 }`}
               >
-                {isDone ? "✓ " : ""}{label}
+                {isDone ? "✓ " : ""}
+                {label}
               </button>
             );
           })}
@@ -751,31 +1029,46 @@ function GroupCard({ group, projects, token, onSetTime, onDeleteGroup, onAddTask
         {/* ── Time Stamps ──────────────────────────────────────────── */}
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-4">
           {TIME_BUTTONS.map(({ key, label }) => (
-            <div key={key} className="bg-slate-50 border border-slate-100 rounded-xl p-2 text-center">
-              <p className="text-[9px] text-slate-400 uppercase tracking-wider font-medium truncate">{label}</p>
+            <div
+              key={key}
+              className="bg-slate-50 border border-slate-100 rounded-xl p-2 text-center"
+            >
+              <p className="text-[9px] text-slate-400 uppercase tracking-wider font-medium truncate">
+                {label}
+              </p>
               <p className="text-xs font-bold text-slate-700 mt-0.5">
-                {group[key] ? formatToISTTime(group[key]) : <span className="text-slate-300">—</span>}
+                {group[key] ? (
+                  formatToISTTime(group[key])
+                ) : (
+                  <span className="text-slate-300">—</span>
+                )}
               </p>
             </div>
           ))}
         </div>
 
         {/* ── Break Durations ───────────────────────────────────────── */}
-        {(group.mgBreakDuration || group.lunchBreakDuration || group.eveBreakDuration) && (
+        {(group.mgBreakDuration ||
+          group.lunchBreakDuration ||
+          group.eveBreakDuration) && (
           <div className="flex flex-wrap gap-2 mb-4">
             {group.mgBreakDuration && group.mgBreakDuration !== "0h 0m" && (
               <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-700 border border-sky-200 px-3 py-1 rounded-full text-xs font-semibold">
-                ☕ MG Break <span className="font-bold">{group.mgBreakDuration}</span>
+                ☕ MG Break{" "}
+                <span className="font-bold">{group.mgBreakDuration}</span>
               </span>
             )}
-            {group.lunchBreakDuration && group.lunchBreakDuration !== "0h 0m" && (
-              <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full text-xs font-semibold">
-                🍱 Lunch <span className="font-bold">{group.lunchBreakDuration}</span>
-              </span>
-            )}
+            {group.lunchBreakDuration &&
+              group.lunchBreakDuration !== "0h 0m" && (
+                <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full text-xs font-semibold">
+                  🍱 Lunch{" "}
+                  <span className="font-bold">{group.lunchBreakDuration}</span>
+                </span>
+              )}
             {group.eveBreakDuration && group.eveBreakDuration !== "0h 0m" && (
               <span className="inline-flex items-center gap-1.5 bg-violet-50 text-violet-700 border border-violet-200 px-3 py-1 rounded-full text-xs font-semibold">
-                🌇 Evening <span className="font-bold">{group.eveBreakDuration}</span>
+                🌇 Evening{" "}
+                <span className="font-bold">{group.eveBreakDuration}</span>
               </span>
             )}
           </div>
@@ -804,11 +1097,31 @@ function GroupCard({ group, projects, token, onSetTime, onDeleteGroup, onAddTask
           <table className="min-w-[1020px] w-full text-sm border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                {["Project", "Task Details", "Start", "End", "Issue", "Status", "Upload", ""].map((h, i) => (
+                {[
+                  "Project",
+                  "Task Details",
+                  "Start",
+                  "End",
+                  "Issue",
+                  "Status",
+                  "Upload",
+                  "",
+                ].map((h, i) => (
                   <th
                     key={i}
                     className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500 ${i === 6 || i === 7 ? "text-center" : ""}`}
-                    style={{ width: ["20%","25%","9%","9%","14%","14%","5%","4%"][i] }}
+                    style={{
+                      width: [
+                        "20%",
+                        "25%",
+                        "9%",
+                        "9%",
+                        "14%",
+                        "14%",
+                        "5%",
+                        "4%",
+                      ][i],
+                    }}
                   >
                     {h}
                   </th>
@@ -838,7 +1151,9 @@ function GroupCard({ group, projects, token, onSetTime, onDeleteGroup, onAddTask
                       <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                         <PlusIcon className="w-5 h-5 text-slate-300" />
                       </div>
-                      <p className="text-slate-400 text-sm">No tasks yet — add one above</p>
+                      <p className="text-slate-400 text-sm">
+                        No tasks yet — add one above
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -852,7 +1167,15 @@ function GroupCard({ group, projects, token, onSetTime, onDeleteGroup, onAddTask
 }
 
 // ─── TaskRow ─────────────────────────────────────────────────────────────────
-function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,groupDate }) {
+function TaskRow({
+  groupId,
+  task,
+  onLocalChange,
+  onDelete,
+  token,
+  projects,
+  groupDate,
+}) {
   const [showModal, setShowModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const headers = { headers: { Authorization: `Bearer ${token}` } };
@@ -875,7 +1198,10 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,group
         headers,
       );
       toast.success("Image uploaded");
-      onLocalChange({ images: res.data.tasks.find((t) => t._id === task._id).images }, false);
+      onLocalChange(
+        { images: res.data.tasks.find((t) => t._id === task._id).images },
+        false,
+      );
     } catch {
       toast.error("Upload failed");
     } finally {
@@ -886,7 +1212,11 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,group
   const saveEndTiming = async () => {
     try {
       const now = new Date().toISOString();
-      await axios.patch(`${API_BASE}/tasks/groups/${groupId}/tasks/${task._id}`, { endTiming: now }, headers);
+      await axios.patch(
+        `${API_BASE}/tasks/groups/${groupId}/tasks/${task._id}`,
+        { endTiming: now },
+        headers,
+      );
       toast.success("End timing saved");
       onLocalChange({ endTiming: now }, false);
     } catch {
@@ -903,7 +1233,10 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,group
         { ...headers, data: { imageUrl } },
       );
       toast.success("Image deleted");
-      onLocalChange({ images: res.data.tasks.find((t) => t._id === task._id).images }, false);
+      onLocalChange(
+        { images: res.data.tasks.find((t) => t._id === task._id).images },
+        false,
+      );
       setShowModal(false);
     } catch {
       toast.error("Delete failed");
@@ -912,25 +1245,34 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,group
 
   return (
     <>
-      <tr className={`hover:bg-slate-50 transition-colors ${isActive ? "bg-emerald-50/30" : ""}`}>
-
+      <tr
+        className={`hover:bg-slate-50 transition-colors ${isActive ? "bg-emerald-50/30" : ""}`}
+      >
         {/* ── Project ─────────────────────────────────────────────── */}
         <td className="p-2 align-top relative">
-          <div className={`border rounded-xl transition-all duration-200 bg-white overflow-hidden
-            ${showProjects ? "border-sky-500 ring-2 ring-sky-100 shadow-md" : "border-slate-200 hover:border-slate-300"}`}>
+          <div
+            className={`border rounded-xl transition-all duration-200 bg-white overflow-hidden
+            ${showProjects ? "border-sky-500 ring-2 ring-sky-100 shadow-md" : "border-slate-200 hover:border-slate-300"}`}
+          >
             <div className="flex items-center justify-between px-3 pt-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Project</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Project
+              </span>
               {task.projectId && (
-                <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">Linked</span>
+                <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">
+                  Linked
+                </span>
               )}
             </div>
             <textarea
-            disabled={isDisabled}
+              disabled={isDisabled}
               value={task.projname || ""}
               placeholder="Search or type project…"
               onFocus={() => setShowProjects(true)}
               onBlur={() => setTimeout(() => setShowProjects(false), 200)}
-              onChange={(e) => onLocalChange({ projname: e.target.value, projectId: null })}
+              onChange={(e) =>
+                onLocalChange({ projname: e.target.value, projectId: null })
+              }
               className="w-full px-3 py-2 min-h-[85px] text-sm resize-none focus:outline-none bg-transparent placeholder:text-slate-300"
             />
           </div>
@@ -939,26 +1281,47 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,group
             <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-50">
               <div className="max-h-52 overflow-y-auto py-1">
                 {projects
-                  .filter((p) => p.projectName.toLowerCase().includes((task.projname || "").toLowerCase()))
+                  .filter((p) =>
+                    p.projectName
+                      .toLowerCase()
+                      .includes((task.projname || "").toLowerCase()),
+                  )
                   .map((p) => (
                     <div
                       key={p._id}
-                      onMouseDown={() => { onLocalChange({ projectId: p._id, projname: p.projectName }); setShowProjects(false); }}
+                      onMouseDown={() => {
+                        onLocalChange({
+                          projectId: p._id,
+                          projname: p.projectName,
+                        });
+                        setShowProjects(false);
+                      }}
                       className="px-4 py-3 cursor-pointer hover:bg-sky-50 border-b border-slate-50 last:border-0 flex items-center justify-between group"
                     >
                       <div>
-                        <p className="text-sm font-semibold text-slate-800">{p.projectName}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{p.projectType}</p>
+                        <p className="text-sm font-semibold text-slate-800">
+                          {p.projectName}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {p.projectType}
+                        </p>
                       </div>
                       <div className="w-2 h-2 rounded-full bg-sky-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   ))}
-                {projects.filter((p) => p.projectName.toLowerCase().includes((task.projname || "").toLowerCase())).length === 0 && (
+                {projects.filter((p) =>
+                  p.projectName
+                    .toLowerCase()
+                    .includes((task.projname || "").toLowerCase()),
+                ).length === 0 && (
                   <div className="px-4 py-4 text-center">
-                    <p className="text-sm text-slate-500">No matching project</p>
+                    <p className="text-sm text-slate-500">
+                      No matching project
+                    </p>
                     {task.projname && (
                       <div className="mt-2 inline-flex items-center gap-1.5 bg-sky-50 text-sky-700 px-3 py-1.5 rounded-xl text-xs font-semibold">
-                        ✨ Use: <span className="font-bold">"{task.projname}"</span>
+                        ✨ Use:{" "}
+                        <span className="font-bold">"{task.projname}"</span>
                       </div>
                     )}
                   </div>
@@ -971,7 +1334,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,group
         {/* ── Task Name ───────────────────────────────────────────── */}
         <td className="p-2 align-top">
           <textarea
-          disabled={isDisabled}
+            disabled={isDisabled}
             value={task.name || ""}
             onChange={(e) => onLocalChange({ name: e.target.value })}
             placeholder="Describe the task…"
@@ -982,10 +1345,23 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,group
         {/* ── Start Timing ────────────────────────────────────────── */}
         <td className="p-2 align-top">
           <div className="border border-slate-200 rounded-xl bg-slate-50 min-h-[80px] flex flex-col items-center justify-center gap-1 px-2">
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2"/>
+            <svg
+              className="w-4 h-4 text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 6v6l4 2"
+              />
             </svg>
-            <p className="text-xs font-bold text-slate-700 text-center">{formatToISTTime(task.timing)}</p>
+            <p className="text-xs font-bold text-slate-700 text-center">
+              {formatToISTTime(task.timing)}
+            </p>
           </div>
         </td>
 
@@ -995,22 +1371,40 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,group
             disabled={!!task.endTiming}
             onClick={saveEndTiming}
             className={`w-full min-h-[80px] flex flex-col items-center justify-center gap-1 rounded-xl text-xs font-bold transition-all border
-              ${task.endTiming
-                ? "bg-slate-50 text-slate-600 border-slate-200 cursor-default"
-                : "bg-rose-500 hover:bg-rose-600 text-white border-rose-500 shadow-sm active:scale-95 cursor-pointer"
+              ${
+                task.endTiming
+                  ? "bg-slate-50 text-slate-600 border-slate-200 cursor-default"
+                  : "bg-rose-500 hover:bg-rose-600 text-white border-rose-500 shadow-sm active:scale-95 cursor-pointer"
               }`}
           >
             {task.endTiming ? (
               <>
-                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2"/>
+                <svg
+                  className="w-4 h-4 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 6v6l4 2"
+                  />
                 </svg>
                 <span>{formatToISTTime(task.endTiming)}</span>
               </>
             ) : (
               <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <rect x="6" y="6" width="12" height="12" rx="2"/>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
                 </svg>
                 <span>Stop</span>
               </>
@@ -1042,12 +1436,21 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,group
 
         {/* ── Upload ──────────────────────────────────────────────── */}
         <td className="p-2 align-middle text-center">
-          <label className={`cursor-pointer group inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all ${uploading ? "border-sky-200 bg-sky-50" : "border-slate-200 hover:border-sky-300 hover:bg-sky-50"}`}>
-            {uploading
-              ? <div className="w-4 h-4 border-2 border-sky-300 border-t-sky-600 rounded-full animate-spin" />
-              : <FaUpload className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 transition-colors" />
-            }
-            <input type="file" className="hidden" accept="image/*" onChange={uploadImage} disabled={uploading} />
+          <label
+            className={`cursor-pointer group inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all ${uploading ? "border-sky-200 bg-sky-50" : "border-slate-200 hover:border-sky-300 hover:bg-sky-50"}`}
+          >
+            {uploading ? (
+              <div className="w-4 h-4 border-2 border-sky-300 border-t-sky-600 rounded-full animate-spin" />
+            ) : (
+              <FaUpload className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 transition-colors" />
+            )}
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={uploadImage}
+              disabled={uploading}
+            />
           </label>
 
           {/* Image thumbnails */}
@@ -1072,7 +1475,7 @@ function TaskRow({ groupId, task, onLocalChange, onDelete, token, projects,group
         {/* ── Delete ──────────────────────────────────────────────── */}
         <td className="p-2 align-middle text-center">
           <button
-          disabled={isDisabled}
+            disabled={isDisabled}
             onClick={onDelete}
             className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-transparent hover:border-red-100 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all"
           >
